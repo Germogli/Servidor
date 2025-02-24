@@ -45,10 +45,16 @@ public class User implements UserDetails {
 
     private String description;
 
-    @Column(name = "creation_date", nullable = false)
-    private Date creationDate;
+    @Column(name = "creation_date", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date creationDate = new Date();
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @ManyToOne
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
