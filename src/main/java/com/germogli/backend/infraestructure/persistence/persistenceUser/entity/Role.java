@@ -1,5 +1,6 @@
 package com.germogli.backend.infraestructure.persistence.persistenceUser.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,5 +26,6 @@ public class Role {
     private String roleType;
 
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore  // Evita la serialización recursiva
     private List<User> users;
 }
