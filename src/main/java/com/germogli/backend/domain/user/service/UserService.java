@@ -3,7 +3,7 @@ package com.germogli.backend.domain.user.service;
 import com.germogli.backend.domain.user.dto.DeleteUserDTO;
 import com.germogli.backend.domain.user.dto.GetUserByEmailDTO;
 import com.germogli.backend.domain.user.dto.UpdateUserInfoDTO;
-import com.germogli.backend.domain.user.repository.UserRepository;
+import com.germogli.backend.domain.user.repository.IUserRepository;
 import com.germogli.backend.infraestructure.persistence.persistenceUser.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,26 +12,26 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     // Inyeccion del repositorio de usuario
-    private final UserRepository userRepository;
+    private final IUserRepository IUserRepository;
 
     // Constructor para inyeccion de dependencias
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserService(IUserRepository IUserRepository) {
+        this.IUserRepository = IUserRepository;
     }
 
     // metodos que orquestan las funciones de los usuarios usando SP
     @Transactional
     public void updateUserInfo(UpdateUserInfoDTO updateUserInfoDTO) {
-        userRepository.updateUserInfoSP(updateUserInfoDTO);
+        IUserRepository.updateUserInfoSP(updateUserInfoDTO);
     }
 
     @Transactional
     public void deleteUser(DeleteUserDTO deleteUserDTO) {
-        userRepository.deleteUserSP(deleteUserDTO);
+        IUserRepository.deleteUserSP(deleteUserDTO);
     }
 
     @Transactional
     public User getUserByEmail(GetUserByEmailDTO getUserByEmailDTO) {
-        return userRepository.getUserByEmailSP(getUserByEmailDTO);
+        return IUserRepository.getUserByEmailSP(getUserByEmailDTO);
     }
 }
