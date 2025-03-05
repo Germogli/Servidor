@@ -1,23 +1,18 @@
-package com.germogli.backend.domain.user.dto;
+package com.germogli.backend.user.application.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
-
+// Anotaciones lombok para generar codigo repetitivo al correr la aplicacion
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RegisterRequestDTO {
+public class UpdateUserInfoDTO {
+    private Integer userId;
     private String username;
-    private String email;
-    private String password;
     private String avatar;
     private String firstName;
     private String lastName;
     private String description;
-    private Date creationDate;
 }

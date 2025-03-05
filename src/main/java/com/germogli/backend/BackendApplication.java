@@ -9,11 +9,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackages = {
 		"com.germogli.backend.community.post.infrastructure.crud",
 		"com.germogli.backend.community.post.domain.repository",
-		"com.germogli.backend.authentication.infrastructure.crud"  // si es necesario
+		"com.germogli.backend.authentication.infrastructure.crud" // si es necesario
 })
 @ComponentScan(basePackages = {
 		"com.germogli.backend.community",
 		"com.germogli.backend.common",
+		"com.germogli.backend.user",
 		"com.germogli.backend.authentication" // Se tiene que agregar para escanear el módulo de autenticacion
 })
 public class BackendApplication {
