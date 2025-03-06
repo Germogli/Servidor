@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -62,7 +61,7 @@ public class PostDomainService {
         existingPost.setPostType(request.getPostType());
         existingPost.setContent(request.getContent());
         existingPost.setMultimediaContent(request.getMultimediaContent());
-        // Se actualiza la fecha de modificación, si se desea
+        // Actualiza la fecha de modificación
         existingPost.setPostDate(LocalDateTime.now());
         return postRepository.save(existingPost);
     }

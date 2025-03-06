@@ -1,6 +1,5 @@
 package com.germogli.backend.community.post.infrastructure.entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
