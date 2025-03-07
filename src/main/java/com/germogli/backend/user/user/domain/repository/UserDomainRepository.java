@@ -1,11 +1,15 @@
 package com.germogli.backend.user.user.domain.repository;
 
+import com.germogli.backend.user.user.domain.model.User;
 
-import com.germogli.backend.authentication.domain.model.UserDomain;
-
-// Define el contrato para el consumo del SP
+/**
+ * Contrato para las operaciones de usuario mediante procedimientos almacenados.
+ */
 public interface UserDomainRepository {
-    void updateUserInfoSP(UserDomain user);
-    void deleteUserSP(UserDomain user);
-    UserDomain getUserByUsernameSP(UserDomain user);
+    void updateUserInfo(User user);
+    void deleteUser(User user);
+    User getUserByUsername(String username);
+
+    // Nuevo método para obtener un usuario por su ID
+    User getUserById(Integer id);
 }

@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * DTO genérico para envolver respuestas de la API.
+ */
 @Data
 @Builder
 @NoArgsConstructor

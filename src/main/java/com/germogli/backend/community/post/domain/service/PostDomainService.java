@@ -9,6 +9,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 @Service
 public class PostDomainService {
 
-    private final PostDomainRepository postRepository;
+    private final @Qualifier("communityPostRepository") PostDomainRepository postRepository;
     // Repositorio del módulo de autenticación para obtener el usuario autenticado
     private final UserDomainRepository userRepository;
 

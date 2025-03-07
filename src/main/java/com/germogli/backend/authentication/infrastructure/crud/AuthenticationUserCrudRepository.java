@@ -8,6 +8,6 @@ import java.util.Optional;
 /**
  * Repositorio CRUD para la entidad UserEntity.
  */
-public interface UserCrudRepository extends JpaRepository<UserEntity, Integer> {
+public interface AuthenticationUserCrudRepository extends JpaRepository<UserEntity, Integer> {
     Optional<UserEntity> findByUsername(String username);
 }

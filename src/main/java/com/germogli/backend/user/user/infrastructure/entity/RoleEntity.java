@@ -1,13 +1,9 @@
-package com.germogli.backend.authentication.infrastructure.entity;
+package com.germogli.backend.user.user.infrastructure.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Mapea la tabla 'roles' en la base de datos.
- * En este caso la tabla es estática y se asume que ya contiene los 4 roles.
- */
-@Entity(name = "AuthRoleEntity")
+@Entity(name = "UserRoleEntity")
 @Table(name = "roles")
 @Data
 @NoArgsConstructor

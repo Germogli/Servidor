@@ -4,7 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// Anotaciones lombok para generar codigo repetitivo al correr la aplicacion
+/**
+ * DTO para solicitar un usuario por su username.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

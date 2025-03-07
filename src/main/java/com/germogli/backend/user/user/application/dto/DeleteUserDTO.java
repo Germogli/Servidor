@@ -4,10 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// Anotaciones lombok para generar codigo repetitivo al correr la aplicacion
+/**
+ * DTO para la eliminación de un usuario.
+ */
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class DeleteUserDTO {
     private Integer userId;
 }

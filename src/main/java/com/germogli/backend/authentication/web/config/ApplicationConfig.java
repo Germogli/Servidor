@@ -1,6 +1,6 @@
 package com.germogli.backend.authentication.web.config;
 
-import com.germogli.backend.authentication.infrastructure.crud.UserCrudRepository;
+import com.germogli.backend.authentication.infrastructure.crud.AuthenticationUserCrudRepository;
 import com.germogli.backend.authentication.infrastructure.repository.UserRepository;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
-    private final UserCrudRepository userCrudRepository;
+    private final AuthenticationUserCrudRepository authenticationUserCrudRepository;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -46,7 +46,7 @@ public class ApplicationConfig {
     }
 
     @Bean
-    public UserDomainRepository userDomainRepository(UserCrudRepository crudRepo) {
+    public UserDomainRepository userDomainRepository(AuthenticationUserCrudRepository crudRepo) {
         return new UserRepository(crudRepo);
     }
 }

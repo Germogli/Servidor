@@ -1,13 +1,14 @@
 package com.germogli.backend.user.user.domain.service;
 
-import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.common.exception.ResourceNotFoundException;
-import com.germogli.backend.common.exception.UserNotFoundException;
 import com.germogli.backend.user.user.application.dto.DeleteUserDTO;
 import com.germogli.backend.user.user.application.dto.GetUserByUsernameDTO;
 import com.germogli.backend.user.user.application.dto.UpdateUserInfoDTO;
+import com.germogli.backend.user.user.domain.model.User;
+import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.common.exception.UserNotFoundException;
 import com.germogli.backend.user.user.domain.repository.UserDomainRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,132 +17,56 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Service
 public class UserDomainService {
-    private final UserDomainRepository userRepository;
 
-    /**
-     * Actualiza la información de un usuario utilizando el procedimiento almacenado
-     * @param updateUserInfoDTO DTO con la información a actualizar
-     */
-    public void updateUserInfo(UpdateUserInfoDTO updateUserInfoDTO) {
-        try {
-            // Extrae el usuario autenticado del contexto de seguridad
-            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            String username = userDetails.getUsername();
+    private final @Qualifier("userUserRepository")  UserDomainRepository userRepository;
 
-            // Crea un objeto UserDomain con el username para pasarlo al repositorio
-            UserDomain userDomainForSearch = UserDomain.builder()
-                    .username(username)
-                    .build();
+    public void updateUserInfo(UpdateUserInfoDTO dto) {
+        UserDetails authUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String authUsername = authUserDetails.getUsername();
 
-            // Obtiene el usuario autenticado completo
-            UserDomain authenticatedUser = userRepository.getUserByUsernameSP(userDomainForSearch);
-
-            if (!authenticatedUser.getId().equals(updateUserInfoDTO.getUserId())) {
-                throw new AccessDeniedException("No tienes permiso para actualizar la información de otro usuario");
-            }
-
-            // Construye el objeto de dominio a partir del DTO
-            UserDomain userDomain = UserDomain.builder()
-                    .id(updateUserInfoDTO.getUserId())
-                    .username(updateUserInfoDTO.getUsername())
-                    .avatar(updateUserInfoDTO.getAvatar())
-                    .firstName(updateUserInfoDTO.getFirstName())
-                    .lastName(updateUserInfoDTO.getLastName())
-                    .description(updateUserInfoDTO.getDescription())
-                    .build();
-
-            // Invoca el procedimiento almacenado a través del repositorio
-            userRepository.updateUserInfoSP(userDomain);
-        } catch (AccessDeniedException e) {
-            throw e; // Propaga la excepción de acceso denegado
-        } catch (Exception e) {
-            throw new ResourceNotFoundException("Error al actualizar la información del usuario: " + e.getMessage());
+        User authenticatedUser = userRepository.getUserByUsername(authUsername);
+        if (authenticatedUser == null) {
+            throw new UserNotFoundException("Usuario no encontrado: " + authUsername);
         }
+        if (!authenticatedUser.getId().equals(dto.getUserId())) {
+            throw new AccessDeniedException("No tienes permiso para actualizar la información de otro usuario");
+        }
+        User updatedUser = User.builder()
+                .id(dto.getUserId())
+                .username(dto.getUsername())
+                .avatar(dto.getAvatar())
+                .firstName(dto.getFirstName())
+                .lastName(dto.getLastName())
+                .description(dto.getDescription())
+                .build();
+        userRepository.updateUserInfo(updatedUser);
     }
 
-    /**
-     * Elimina un usuario utilizando el procedimiento almacenado
-     * @param deleteUserDTO DTO con el ID del usuario a eliminar
-     */
-    public void deleteUser(DeleteUserDTO deleteUserDTO) {
-        try {
-            // Construye el objeto de dominio a partir del DTO
-            UserDomain userDomain = UserDomain.builder()
-                    .id(deleteUserDTO.getUserId())
-                    .build();
-
-            // Invoca el procedimiento almacenado a través del repositorio
-            userRepository.deleteUserSP(userDomain);
-        } catch (Exception e) {
-            throw new ResourceNotFoundException("Error al eliminar el usuario: " + e.getMessage());
+    public void deleteUser(DeleteUserDTO dto) {
+        // Usamos getUserById para obtener el usuario correctamente mediante su ID
+        User user = userRepository.getUserById(dto.getUserId());
+        if (user == null) {
+            throw new ResourceNotFoundException("Usuario no encontrado con ID: " + dto.getUserId());
         }
+        userRepository.deleteUser(user);
     }
 
-//    public void deleteUser(DeleteUserDTO deleteUserDTO) {
-//        try {
-//            // Extrae el usuario autenticado del contexto de seguridad
-//            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//            String username = userDetails.getUsername();
-//
-//            // Busca el usuario autenticado en el sistema
-//            UserDomain authenticatedUser = userRepository.findByUsername(username)
-//                    .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
-//
-//            // Verifica si el usuario autenticado tiene permiso para eliminar este usuario
-//            // Solo el propio usuario o un administrador puede eliminar la cuenta
-//            if (!authenticatedUser.getId().equals(deleteUserDTO.getUserId()) &&
-//                    !authenticatedUser.getRole().equals(Role.ADMIN)) {
-//                throw new AccessDeniedException("No tienes permiso para eliminar este usuario");
-//            }
-//
-//            // Construye el objeto de dominio a partir del DTO
-//            UserDomain userDomain = UserDomain.builder()
-//                    .id(deleteUserDTO.getUserId())
-//                    .build();
-//
-//            // Invoca el procedimiento almacenado a través del repositorio
-//            userRepository.deleteUserSP(userDomain);
-//        } catch (AccessDeniedException e) {
-//            throw e; // Propaga la excepción de acceso denegado
-//        } catch (Exception e) {
-//            throw new ResourceNotFoundException("Error al eliminar el usuario: " + e.getMessage());
-//        }
-//    }
-
-    /**
-     * Obtiene un usuario por su email utilizando el procedimiento almacenado
-     * @param getUserByUsernameDTO DTO con el email del usuario a buscar
-     * @return El objeto UserDomain con la información del usuario
-     */
-    public UserDomain getUserByUsername(GetUserByUsernameDTO getUserByUsernameDTO) {
-        try {
-            // Construye el objeto de dominio a partir del DTO
-            UserDomain userDomain = UserDomain.builder()
-                    .username(getUserByUsernameDTO.getUsername())
-                    .build();
-
-            // Invoca el procedimiento almacenado a través del repositorio
-            return userRepository.getUserByUsernameSP(userDomain);
-        } catch (UserNotFoundException e) {
-            throw e; // Propaga la excepción específica de usuario no encontrado
-        } catch (Exception e) {
-            throw new ResourceNotFoundException("Error al obtener el usuario por email: " + e.getMessage());
+    public User getUserByUsername(GetUserByUsernameDTO dto) {
+        User user = userRepository.getUserByUsername(dto.getUsername());
+        if (user == null) {
+            throw new UserNotFoundException("No se encontró un usuario con el nombre: " + dto.getUsername());
         }
+        return user;
     }
 
-    /**
-     * Convierte un UserDomain a un DTO de respuesta (puedes crear un ResponseDTO según necesites)
-     * @param userDomain objeto de dominio a convertir
-     * @return DTO con la información necesaria para el cliente
-     */
-    public UpdateUserInfoDTO toResponseDTO(UserDomain userDomain) {
+    public UpdateUserInfoDTO toResponseDTO(User user) {
         return new UpdateUserInfoDTO(
-                userDomain.getId(),
-                userDomain.getUsername(),
-                userDomain.getAvatar(),
-                userDomain.getFirstName(),
-                userDomain.getLastName(),
-                userDomain.getDescription()
+                user.getId(),
+                user.getUsername(),
+                user.getAvatar(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getDescription()
         );
     }
 }

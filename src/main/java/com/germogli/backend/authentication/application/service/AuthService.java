@@ -11,6 +11,7 @@ import com.germogli.backend.common.exception.UserAlreadyExistsException;
 import com.germogli.backend.common.exception.UserNotFoundException;
 import com.germogli.backend.common.exception.AdminAccessDeniedException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,7 +25,8 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final UserDomainRepository userRepository;
+    private final @Qualifier("AuthenticationUserRepository") UserDomainRepository userRepository;// para que no haya
+    // errores de inyección de dependencias
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;

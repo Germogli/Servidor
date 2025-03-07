@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /**
  * Repositorio CRUD para la entidad PostEntity.
  */
-public interface PostCrudRepository extends JpaRepository<PostEntity, Integer> {
+public interface CommunityPostCrudRepository extends JpaRepository<PostEntity, Integer> {
 }

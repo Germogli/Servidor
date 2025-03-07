@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * Implementación del repositorio de dominio para Post, usando procedimientos almacenados.
  */
-@Repository
+@Repository("communityPostRepository")
 @RequiredArgsConstructor
 public class PostRepository implements PostDomainRepository {
 

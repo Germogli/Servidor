@@ -2,9 +2,10 @@ package com.germogli.backend.authentication.infrastructure.repository;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
-import com.germogli.backend.authentication.infrastructure.crud.UserCrudRepository;
+import com.germogli.backend.authentication.infrastructure.crud.AuthenticationUserCrudRepository;
 import com.germogli.backend.authentication.infrastructure.entity.UserEntity;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -13,21 +14,22 @@ import java.util.Optional;
  * Implementación de UserDomainRepository.
  * Se encarga de transformar entre UserEntity y UserDomain.
  */
-@Repository
+@Primary
+@Repository("AuthenticationUserRepository")
 @RequiredArgsConstructor
 public class UserRepository implements UserDomainRepository {
-    private final UserCrudRepository userCrudRepository;
+    private final AuthenticationUserCrudRepository authenticationUserCrudRepository;
 
     @Override
     public Optional<UserDomain> findByUsername(String username) {
-        return userCrudRepository.findByUsername(username)
+        return authenticationUserCrudRepository.findByUsername(username)
                 .map(UserDomain::fromEntity);
     }
 
     @Override
     public UserDomain save(UserDomain user) {
         UserEntity entity = user.toEntity();
-        UserEntity savedEntity = userCrudRepository.save(entity);
+        UserEntity savedEntity = authenticationUserCrudRepository.save(entity);
         return UserDomain.fromEntity(savedEntity);
     }
 }
