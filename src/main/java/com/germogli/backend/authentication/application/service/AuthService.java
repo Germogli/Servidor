@@ -9,12 +9,15 @@ import com.germogli.backend.authentication.domain.repository.UserDomainRepositor
 import com.germogli.backend.authentication.infrastructure.security.JwtService;
 import com.germogli.backend.common.exception.UserAlreadyExistsException;
 import com.germogli.backend.common.exception.UserNotFoundException;
+import com.germogli.backend.common.exception.AdminAccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 
 @Service
@@ -26,33 +29,32 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponseDTO login(LoginRequestDTO request) {
-        // Verifica que el usuario exista
+        // Verifica que el usuario exista en el dominio
         UserDomain userDomain = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UserNotFoundException("El usuario " + request.getUsername() + " no está registrado"));
 
-        // Autentica las credenciales; si fallan se lanza una excepción
+        // Autentica las credenciales; si fallan se lanzará una excepción
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
-        // Genera el token utilizando el UserDetails
+        // Genera el token utilizando el UserDetails obtenido del dominio
         String token = jwtService.getToken(userDomain.toUserDetails());
         return AuthResponseDTO.builder().token(token).build();
     }
 
     public AuthResponseDTO register(RegisterRequestDTO request) {
-        // Verifica que no exista ya el usuario
+        // Registro de usuarios comunes: asigna por defecto el rol "COMUN"
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new UserAlreadyExistsException("El usuario " + request.getUsername() + " ya existe.");
         }
 
-        // Asigna el rol "COMUN" por defecto. Se asume que en la base de datos el rol COMUN tiene id = 4.
+        // Se asigna el rol "COMUN"
         Role defaultRole = Role.builder()
-                .id(4)  // Este id debe coincidir con el de la tabla roles en la base de datos
+                .id(4)
                 .roleType("COMUN")
                 .build();
 
-        // Construye el objeto de dominio para el nuevo usuario
         UserDomain userDomain = UserDomain.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -67,7 +69,45 @@ public class AuthService {
 
         userRepository.save(userDomain);
 
-        // Genera el token para el usuario registrado
+        String token = jwtService.getToken(userDomain.toUserDetails());
+        return AuthResponseDTO.builder().token(token).build();
+    }
+
+    /**
+     * Registra un usuario administrador. Este método se invoca desde un endpoint protegido.
+     * Se realiza una verificación adicional para asegurarse de que el usuario autenticado tenga la authority ADMINISTRADOR.
+     */
+    public AuthResponseDTO registerAdmin(RegisterRequestDTO request) {
+        // Verifica que el usuario autenticado tenga la authority ADMINISTRADOR
+        UserDetails currentUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!currentUserDetails.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"))) {
+            throw new AdminAccessDeniedException("No se ha reconocido como administrador, no puede realizar esta acción.");
+        }
+
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new UserAlreadyExistsException("El usuario " + request.getUsername() + " ya existe.");
+        }
+
+        // Asigna el rol "ADMINISTRADOR"
+        Role adminRole = Role.builder()
+                .id(3)
+                .roleType("ADMINISTRADOR")
+                .build();
+
+        UserDomain userDomain = UserDomain.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .country(request.getCountry())
+                .isActive(true)
+                .role(adminRole)
+                .creationDate(LocalDateTime.now())
+                .build();
+
+        userRepository.save(userDomain);
+
         String token = jwtService.getToken(userDomain.toUserDetails());
         return AuthResponseDTO.builder().token(token).build();
     }

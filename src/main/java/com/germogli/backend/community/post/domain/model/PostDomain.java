@@ -5,6 +5,10 @@ import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
 
+/**
+ * Modelo de dominio para la publicación.
+ * Este modelo representa la lógica de negocio y se utiliza en el servicio.
+ */
 @Data
 @Builder
 public class PostDomain {

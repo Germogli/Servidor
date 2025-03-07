@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
+/**
+ * Controlador REST para gestionar publicaciones en el módulo Community.
+ */
 @RestController
 @RequestMapping("/posts")
 @RequiredArgsConstructor
@@ -56,6 +59,10 @@ public class PostController {
                 .build());
     }
 
+    /**
+     * Endpoint para eliminar una publicación.
+     * Se verifica que el usuario autenticado sea el propietario o un administrador.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<Void>> deletePost(@PathVariable Integer id) {
         postDomainService.deletePost(id);

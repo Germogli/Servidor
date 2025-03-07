@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Implementación del repositorio de dominio para Post, usando procedimientos almacenados.
+ */
 @Repository
 @RequiredArgsConstructor
 public class PostRepository implements PostDomainRepository {

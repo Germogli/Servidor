@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * DTO para la creación de una publicación.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,4 +27,3 @@ public class CreatePostRequestDTO {
     private Integer groupId;
     private Integer threadId;
 }
-

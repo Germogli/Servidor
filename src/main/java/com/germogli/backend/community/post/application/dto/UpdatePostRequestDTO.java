@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * DTO para la actualización de una publicación.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,4 +23,3 @@ public class UpdatePostRequestDTO {
     // Opcional: Actualización del contenido multimedia
     private String multimediaContent;
 }
-

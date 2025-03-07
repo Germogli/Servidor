@@ -7,6 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
+/**
+ * Entidad JPA que mapea la tabla "posts" en la base de datos.
+ */
 @Data
 @Builder
 @NoArgsConstructor

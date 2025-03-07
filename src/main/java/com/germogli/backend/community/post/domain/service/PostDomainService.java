@@ -9,6 +9,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Servicio de dominio para las publicaciones.
+ * Contiene la lógica de negocio, incluyendo la validación de permisos para eliminar publicaciones.
+ */
 @RequiredArgsConstructor
 @Service
 public class PostDomainService {
@@ -31,7 +36,7 @@ public class PostDomainService {
         UserDomain currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
 
-        // Crea el objeto de dominio asignándole el userId obtenido y la fecha de creación
+        // Crea el objeto de dominio asignándole el userId y la fecha de creación
         PostDomain postDomain = PostDomain.builder()
                 .userId(currentUser.getId())
                 .postType(request.getPostType())
@@ -66,7 +71,28 @@ public class PostDomainService {
         return postRepository.save(existingPost);
     }
 
+    /**
+     * Elimina una publicación. La eliminación solo se permite si:
+     * - El usuario autenticado es el propietario de la publicación, o
+     * - El usuario tiene rol ADMINISTRADOR.
+     */
     public void deletePost(Integer id) {
+        // Obtener el usuario autenticado
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = userDetails.getUsername();
+        UserDomain currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
+        // Obtener la publicación
+        PostDomain post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
+
+        // Verificar permisos: solo el propietario o un administrador pueden eliminar
+        boolean isOwner = post.getUserId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() != null &&
+                currentUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para eliminar esta publicación");
+        }
         postRepository.deleteById(id);
     }
 
@@ -84,7 +110,7 @@ public class PostDomainService {
                 .build();
     }
 
-    // Métodos auxiliares para la respuesta
+    // Métodos auxiliares para transformar una lista de dominios a DTOs
     public List<PostResponseDTO> toResponseList(List<PostDomain> posts) {
         return posts.stream()
                 .map(this::toResponse)

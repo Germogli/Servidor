@@ -4,6 +4,9 @@ import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+/**
+ * DTO de respuesta para representar una publicación.
+ */
 @Data
 @Builder
 public class PostResponseDTO {
@@ -16,4 +19,3 @@ public class PostResponseDTO {
     private Integer groupId;
     private Integer threadId;
 }
-
