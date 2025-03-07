@@ -2,7 +2,6 @@ package com.germogli.backend.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -24,10 +23,5 @@ public class GlobalException {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
-    // Opcional: Manejo de AccessDeniedException genérica o personalizada
-    @ExceptionHandler({AccessDeniedException.class, AdminAccessDeniedException.class})
-    public ResponseEntity<String> handleAccessDeniedException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("No se ha reconocido como administrador, no puede realizar esta acción.");
-    }
+    // Otros handlers según se necesiten
 }

@@ -9,6 +9,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackages = {
 		"com.germogli.backend.community.post.infrastructure.crud",
 		"com.germogli.backend.community.post.domain.repository",
+		"com.germogli.backend.user.role.infrastructure.crud",
+		"com.germogli.backend.user.role.domain.repository",
+		"com.germogli.backend.user.user.infrastructure.crud",
+		"com.germogli.backend.user.user.domain.repository",
 		"com.germogli.backend.authentication.infrastructure.crud" // si es necesario
 })
 @ComponentScan(basePackages = {
