@@ -1,14 +1,16 @@
 package com.germogli.backend.authentication.domain.model;
 
 import com.germogli.backend.authentication.infrastructure.entity.UserEntity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDateTime;
 
+/**
+ * Modelo de dominio para el usuario.
+ * Contiene un objeto Role para reflejar la relación con la tabla roles.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,17 +26,18 @@ public class UserDomain {
     private String avatar;
     private String description;
     private Boolean isActive;
-    private Role role;
+    private Role role;  // Relación con el rol (modelo de dominio)
     private LocalDateTime creationDate;
 
     /**
      * Convierte este objeto de dominio en un UserDetails para Spring Security.
+     * Se asigna la autoridad basada en el rol, por ejemplo: ROLE_COMUN.
      */
     public UserDetails toUserDetails() {
         return User.builder()
                 .username(username)
                 .password(password)
-                .authorities(role.name())
+                .authorities("ROLE_" + role.getRoleType().toUpperCase())
                 .build();
     }
 
@@ -53,7 +56,10 @@ public class UserDomain {
                 .avatar(entity.getAvatar())
                 .description(entity.getDescription())
                 .isActive(entity.getIsActive())
-                .role(entity.getRole())
+                .role(Role.builder()
+                        .id(entity.getRole().getId())
+                        .roleType(entity.getRole().getRoleType())
+                        .build())
                 .creationDate(entity.getCreationDate())
                 .build();
     }
@@ -73,7 +79,11 @@ public class UserDomain {
                 .avatar(avatar)
                 .description(description)
                 .isActive(isActive)
-                .role(role)
+                // Mapea el Role del dominio a RoleEntity
+                .role(com.germogli.backend.authentication.infrastructure.entity.RoleEntity.builder()
+                        .id(role.getId())
+                        .roleType(role.getRoleType())
+                        .build())
                 .creationDate(creationDate)
                 .build();
     }

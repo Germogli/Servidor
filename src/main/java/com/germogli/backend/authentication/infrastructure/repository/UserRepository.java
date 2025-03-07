@@ -6,8 +6,13 @@ import com.germogli.backend.authentication.infrastructure.crud.UserCrudRepositor
 import com.germogli.backend.authentication.infrastructure.entity.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
 
+/**
+ * Implementación de UserDomainRepository.
+ * Se encarga de transformar entre UserEntity y UserDomain.
+ */
 @Repository
 @RequiredArgsConstructor
 public class UserRepository implements UserDomainRepository {

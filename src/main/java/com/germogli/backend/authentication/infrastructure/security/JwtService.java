@@ -7,6 +7,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,7 +16,8 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    private static final String SECRET_KEY = "uX1v6U/7nO0t8aB3W9vZ6rT3yN0m+P7bQzS9vD8wX0cE"; // Debe tener al menos 256 bits
+    // Clave secreta para firmar el token (mínimo 256 bits)
+    private static final String SECRET_KEY = "uX1v6U/7nO0t8aB3W9vZ6rT3yN0m+P7bQzS9vD8wX0cE";
 
     public String getToken(UserDetails user) {
         return getToken(new HashMap<>(), user);
@@ -26,6 +28,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(user.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
+                // Ejemplo: el token expira en 24 minutos
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();

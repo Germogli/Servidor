@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * DTO que contiene las credenciales de login.
+ */
 @Data
 @Builder
 @NoArgsConstructor

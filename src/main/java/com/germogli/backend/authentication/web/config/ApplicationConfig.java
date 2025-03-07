@@ -37,13 +37,13 @@ public class ApplicationConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // Define el UserDetailsService usando nuestro repositorio de usuarios.
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"))
                 .toUserDetails();
     }
-
 
     @Bean
     public UserDomainRepository userDomainRepository(UserCrudRepository crudRepo) {

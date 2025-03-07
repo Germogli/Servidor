@@ -1,18 +1,19 @@
 package com.germogli.backend.authentication.infrastructure.entity;
 
-import com.germogli.backend.authentication.domain.model.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.security.core.userdetails.UserDetails;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Mapea la tabla 'users' en la base de datos.
+ * Se establece una relación ManyToOne con RoleEntity para reflejar la columna role_id.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,7 +36,6 @@ public class UserEntity implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    // Se especifica el nombre físico para evitar conflictos
     @Column(name = "first_name", nullable = false)
     private String firstName;
 
@@ -54,32 +54,33 @@ public class UserEntity implements UserDetails {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
-    // Se especifica el nombre físico y se utiliza ORDINAL ya que en el script es INT (role_id)
-    @Column(name = "role_id", nullable = false)
-    @Enumerated(EnumType.ORDINAL)
-    private Role role;
+    // Relación con el rol (se asume que la tabla roles ya está poblada)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
+    private RoleEntity role;
 
     @Column(name = "creation_date", nullable = false)
     private LocalDateTime creationDate;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
+        // Asigna la autoridad basándose en el role, por ejemplo: ROLE_COMUN.
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.getRoleType().toUpperCase()));
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return true; // Puedes agregar lógica adicional si es necesario
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return true; // Puedes controlar el bloqueo de cuentas aquí
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return true; // Puedes agregar validaciones para credenciales expiradas
     }
 
     @Override
