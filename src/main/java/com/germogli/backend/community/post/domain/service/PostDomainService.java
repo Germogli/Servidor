@@ -59,14 +59,30 @@ public class PostDomainService {
         return postRepository.findAll();
     }
 
+    /**
+     * Actualiza una publicación.
+     * Solo se permite actualizar si el usuario autenticado es el propietario del post.
+     */
     public PostDomain updatePost(Integer id, UpdatePostRequestDTO request) {
+        // Obtiene el usuario autenticado
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = userDetails.getUsername();
+        UserDomain currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
+
+        // Recupera el post existente
         PostDomain existingPost = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
 
+        // Verifica que el usuario autenticado sea el dueño del post
+        if (!existingPost.getUserId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("No tiene permisos para actualizar esta publicación");
+        }
+
+        // Actualiza los datos y la fecha de modificación
         existingPost.setPostType(request.getPostType());
         existingPost.setContent(request.getContent());
         existingPost.setMultimediaContent(request.getMultimediaContent());
-        // Actualiza la fecha de modificación
         existingPost.setPostDate(LocalDateTime.now());
         return postRepository.save(existingPost);
     }

@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 		"com.germogli.backend.user.role.domain.repository",
 		"com.germogli.backend.user.user.infrastructure.crud",
 		"com.germogli.backend.user.user.domain.repository",
-		"com.germogli.backend.authentication.infrastructure.crud" // si es necesario
+		"com.germogli.backend.authentication.infrastructure.crud"
 })
 @ComponentScan(basePackages = {
 		"com.germogli.backend.community",

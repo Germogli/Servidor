@@ -12,6 +12,7 @@ import com.germogli.backend.common.exception.UserNotFoundException;
 import com.germogli.backend.common.exception.AdminAccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,10 +34,15 @@ public class AuthService {
         UserDomain userDomain = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UserNotFoundException("El usuario " + request.getUsername() + " no está registrado"));
 
-        // Autentica las credenciales; si fallan se lanzará una excepción
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+        // Intenta autenticar las credenciales
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (BadCredentialsException ex) {
+            // Si la contraseña es incorrecta, se lanza la excepción con un mensaje personalizado
+            throw new BadCredentialsException("La contraseña ingresada es incorrecta.");
+        }
 
         // Genera el token utilizando el UserDetails obtenido del dominio
         String token = jwtService.getToken(userDomain.toUserDetails());
