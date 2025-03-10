@@ -1,30 +1,25 @@
 package com.germogli.backend.user.role.infrastructure.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.germogli.backend.authentication.infrastructure.entity.UserEntity;
+import com.germogli.backend.user.user.infrastructure.entity.UserEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
-// Anotaciones lombok para generar codigo repetitivo al correr la aplicacion
+@Entity(name = "RoleRoleEntity")
+@Table(name = "roles")
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "UseRoleEntity")
-@Table(name = "roles")
+@Builder
 public class RoleEntity {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Especifica que el valor se generará automáticamente por la base de datos (auto-incrementable).
-    @Column(name = "role_id") // Mapea este campo a la columna "role_id" en la tabla "role"
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "role_id")
     private Integer id;
 
-    @Column(name = "role_type", nullable = false, unique = true)
+    @Column(name = "role_type", nullable = false)
     private String roleType;
 
     @OneToMany( // Define una relación Uno a Muchos (Un rol puede estar asociado a muchos usuarios)

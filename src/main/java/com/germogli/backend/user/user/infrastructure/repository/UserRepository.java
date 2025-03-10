@@ -1,6 +1,6 @@
 package com.germogli.backend.user.user.infrastructure.repository;
 
-import com.germogli.backend.user.user.domain.model.Role;
+import com.germogli.backend.user.role.domain.model.Role;
 import com.germogli.backend.user.user.domain.model.User;
 import com.germogli.backend.user.user.domain.repository.UserDomainRepository;
 import com.germogli.backend.user.user.infrastructure.crud.UserUserCrudRepository;

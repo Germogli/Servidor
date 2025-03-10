@@ -1,5 +1,6 @@
 package com.germogli.backend.user.user.infrastructure.entity;
 
+import com.germogli.backend.user.role.infrastructure.entity.RoleEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;

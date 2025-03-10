@@ -1,4 +1,4 @@
-package com.germogli.backend.user.user.domain.model;
+package com.germogli.backend.user.role.domain.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

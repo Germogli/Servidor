@@ -1,24 +1,26 @@
 package com.germogli.backend.user.role.web.controller;
 
-import com.germogli.backend.user.role.application.dto.ApiResponseDTO;
+import com.germogli.backend.user.user.application.dto.ApiResponseDTO;
 import com.germogli.backend.user.role.application.dto.UpdateUserRoleDTO;
-import com.germogli.backend.user.role.domain.service.RoleService;
+import com.germogli.backend.user.role.domain.service.RoleDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/role")
+@RequestMapping("/roles")
 @RequiredArgsConstructor
 public class RoleController {
 
-    private final RoleService roleService;
+    private final RoleDomainService roleDomainService;
 
-    @PutMapping("/updateRole")
-    public ResponseEntity<ApiResponseDTO<UpdateUserRoleDTO>> updateUserRole(@RequestBody UpdateUserRoleDTO updateUserRoleDTO) {
-        roleService.updateUserRole(updateUserRoleDTO);
+    @PutMapping("/update-user-role/{userId}")
+    public ResponseEntity<ApiResponseDTO<UpdateUserRoleDTO>> updateUserRole(@PathVariable Integer userId, @RequestBody UpdateUserRoleDTO updateUserRoleDTO) {
+        // Aseguramos que el ID del usuario en la ruta y en el DTO coincidan
+        updateUserRoleDTO.setUserId(userId);
+        roleDomainService.updateUserRole(updateUserRoleDTO);
         return ResponseEntity.ok(ApiResponseDTO.<UpdateUserRoleDTO>builder()
-                .message("Rol actualizado correctamente")
+                .message("Rol de usuario actualizado correctamente")
                 .data(updateUserRoleDTO)
                 .build());
     }
