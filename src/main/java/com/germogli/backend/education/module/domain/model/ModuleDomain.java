@@ -7,7 +7,9 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Modelo de dominio para el módulo de educación.
@@ -42,5 +44,12 @@ public class ModuleDomain {
                 .creationDate(this.creationDate)
                 .tags(TagDomain.toEntities(this.tags)) // Convierte las entidades de Tags
                 .build();
+    }
+
+    // Método de conversión de lista de entidades a lista de objetos de dominio
+    public static List<ModuleDomain> fromEntities(List<ModuleEntity> entities) {
+        return entities.stream()
+                .map(ModuleDomain::fromEntity)
+                .collect(Collectors.toList());
     }
 }
