@@ -1,4 +1,4 @@
-package com.germogli.backend.education.module.application.dto;
+package com.germogli.backend.education.application.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

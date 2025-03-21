@@ -1,6 +1,6 @@
 package com.germogli.backend.education.module.web.controller;
 
-import com.germogli.backend.education.module.application.dto.ApiResponseDTO;
+import com.germogli.backend.education.application.dto.ApiResponseDTO;
 
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
