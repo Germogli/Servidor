@@ -2,6 +2,9 @@ package com.germogli.backend.education.tag.domain.model;
 
 
 import com.germogli.backend.education.tag.infrastructure.entity.TagEntity;
+import jakarta.persistence.ColumnResult;
+import jakarta.persistence.ConstructorResult;
+import jakarta.persistence.SqlResultSetMapping;
 import lombok.Builder;
 import lombok.Data;
 

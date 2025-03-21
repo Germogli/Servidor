@@ -1,7 +1,7 @@
 package com.germogli.backend.education.tag.web.controller;
 
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
-import com.germogli.backend.education.tag.application.dto.CreateTagRequestDTO;
+import com.germogli.backend.education.tag.domain.model.TagDomain;
 import com.germogli.backend.education.tag.domain.service.TagDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,17 +17,29 @@ public class TagController {
 
     private final TagDomainService tagDomainService;
 
-    /**
-     * Endpoint para obtener o crear una etiqueta.
-     * Solo accesible para usuarios con el rol ADMINISTRADOR.
-     */
-    @PostMapping
-    public ResponseEntity<ApiResponseDTO<Integer>> getOrCreateTag(@RequestBody CreateTagRequestDTO dto) {
-        Integer tagId = tagDomainService.getOrCreateTag(dto);
-        return ResponseEntity.ok(ApiResponseDTO.<Integer>builder()
-                .message("Etiqueta obtenida o creada correctamente")
-                .data(tagId)
+    // Endpoint para crear una nueva etiqueta
+    @PostMapping("/create/{tagName}")
+    public ResponseEntity<ApiResponseDTO<TagDomain>> createTag(@PathVariable String tagName) {
+        // Crear la etiqueta utilizando el servicio
+        TagDomain tagDomain = tagDomainService.createTag(tagName);
+
+        // Retornar la respuesta con el objeto de la etiqueta creada
+        return ResponseEntity.ok(ApiResponseDTO.<TagDomain>builder()
+                .message("Etiqueta creada correctamente")
+                .data(tagDomain)
                 .build());
     }
 
+    // Endpoint para obtener una etiqueta por su nombre
+    @GetMapping("/get/{tagName}")
+    public ResponseEntity<ApiResponseDTO<TagDomain>> getTagByName(@PathVariable String tagName) {
+        // Buscar la etiqueta por nombre utilizando el servicio
+        TagDomain tagDomain = tagDomainService.getTagByName(tagName);
+
+        // Retornar la respuesta con los datos de la etiqueta encontrada
+        return ResponseEntity.ok(ApiResponseDTO.<TagDomain>builder()
+                .message("Etiqueta encontrada correctamente")
+                .data(tagDomain)
+                .build());
+    }
 }
