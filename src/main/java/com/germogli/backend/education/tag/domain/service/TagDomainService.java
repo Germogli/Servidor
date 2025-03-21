@@ -81,4 +81,25 @@ public class TagDomainService {
 
         return tag;
     }
+
+    public void deleteTagById(Integer id) {
+        // Se extrae el usuario autenticado
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = userDetails.getUsername();
+
+        // Verificar que el usuario a modificar exista
+        UserDomain currentUser = userDomainRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
+
+        // Se verifica que el usuario tenga rol administrador
+        boolean isAdmin = currentUser.getRole() != null &&
+                currentUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+
+        // En caso de que no sea administrador se arroja una excepcion
+        if (!isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para actualizar roles de usuario");
+        }
+
+        tagDomainRepository.deleteById(id);
+    }
 }

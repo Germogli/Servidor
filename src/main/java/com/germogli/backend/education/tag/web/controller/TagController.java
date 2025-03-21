@@ -42,4 +42,13 @@ public class TagController {
                 .data(tagDomain)
                 .build());
     }
+
+    // Endpoint para eliminar una etiqueta por su id
+    @DeleteMapping("/{tagId}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteTag(@PathVariable Integer tagId) {
+        tagDomainService.deleteTagById(tagId);
+        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
+                .message("La etiqueta se eliminó correctamente")
+                .build());
+    }
 }

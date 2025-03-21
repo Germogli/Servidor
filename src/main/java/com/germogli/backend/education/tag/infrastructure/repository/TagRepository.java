@@ -55,7 +55,6 @@ public class TagRepository implements TagDomainRepository {
     @Override
     public TagDomain getByName(String tagName) {
         try {
-            // Llamar al procedimiento almacenado sp_get_tag_by_name y mapear el resultado a TagEntity
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_tag_by_name", TagEntity.class);
             query.registerStoredProcedureParameter("p_tag_name", String.class, ParameterMode.IN);
             query.setParameter("p_tag_name", tagName);
@@ -64,7 +63,7 @@ public class TagRepository implements TagDomainRepository {
             // Se espera que el SP devuelva una única fila
             List<TagEntity> resultList = query.getResultList();
             if (resultList.isEmpty()) {
-                return null; // O lanza una excepción, según tu lógica
+                return null;
             }
 
             // Tomamos el primer (y único) resultado y lo convertimos a TagDomain
@@ -73,5 +72,23 @@ public class TagRepository implements TagDomainRepository {
         } catch (Exception e) {
             throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al buscar la etiqueta: " + tagName);
         }
+    }
+
+    @Override
+    public void deleteById(Integer tagId) {
+        try {
+            // Llamar al procedimiento almacenado para eliminar la etiqueta por ID
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_tag_by_id");
+            query.registerStoredProcedureParameter("p_tag_id", Integer.class, ParameterMode.IN);
+            query.setParameter("p_tag_id", tagId);
+            query.execute();
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al eliminar la etiqueta con ID: " + tagId);
+        }
+    }
+
+    @Override
+    public void updateTagName(TagDomain tag) {
+
     }
 }
