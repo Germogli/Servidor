@@ -18,7 +18,7 @@ public class TagRepository implements TagDomainRepository {
     EntityManager entityManager;
 
     @Override
-    public Integer getOrCreateTag(String tagName) {
+    public Integer getOrCreateTag(TagDomain tag) {
         try {
             // Crear el StoredProcedureQuery para sp_get_or_create_tag
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_or_create_tag");
@@ -28,7 +28,7 @@ public class TagRepository implements TagDomainRepository {
             query.registerStoredProcedureParameter("p_tag_id", Integer.class, ParameterMode.OUT);
 
             // Asignar el valor del parámetro de entrada
-            query.setParameter("p_tag_name", tagName);
+            query.setParameter("p_tag_name", tag.getTagName());
 
             // Ejecutar el procedimiento almacenado
             query.execute();
@@ -36,7 +36,7 @@ public class TagRepository implements TagDomainRepository {
             // Obtener el valor del parámetro de salida (el ID de la etiqueta)
             return (Integer) query.getOutputParameterValue("p_tag_id");
         } catch (Exception e) {
-            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener o crear la etiqueta: " + tagName);
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener o crear la etiqueta: " + tag.getTagName());
         }
     }
 }

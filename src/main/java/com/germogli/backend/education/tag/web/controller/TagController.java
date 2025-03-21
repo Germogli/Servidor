@@ -1,13 +1,11 @@
 package com.germogli.backend.education.tag.web.controller;
 
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
+import com.germogli.backend.education.tag.application.dto.CreateTagRequestDTO;
 import com.germogli.backend.education.tag.domain.service.TagDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * Controlador REST para gestionar etiquetas del modulo education.
@@ -24,8 +22,8 @@ public class TagController {
      * Solo accesible para usuarios con el rol ADMINISTRADOR.
      */
     @PostMapping
-    public ResponseEntity<ApiResponseDTO<Integer>> getOrCreateTag(@RequestParam String tagName) {
-        Integer tagId = tagDomainService.getOrCreateTag(tagName);
+    public ResponseEntity<ApiResponseDTO<Integer>> getOrCreateTag(@RequestBody CreateTagRequestDTO dto) {
+        Integer tagId = tagDomainService.getOrCreateTag(dto);
         return ResponseEntity.ok(ApiResponseDTO.<Integer>builder()
                 .message("Etiqueta obtenida o creada correctamente")
                 .data(tagId)
