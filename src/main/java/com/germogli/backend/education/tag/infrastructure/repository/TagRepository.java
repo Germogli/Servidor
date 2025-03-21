@@ -14,8 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TagRepository implements TagDomainRepository {
 
-    @PersistenceContext
-    EntityManager entityManager;
+    private final EntityManager entityManager;
 
     @Override
     public TagDomain save(String tagName) {
@@ -89,6 +88,22 @@ public class TagRepository implements TagDomainRepository {
 
     @Override
     public void updateTagName(TagDomain tag) {
+        try {
+            // Llamar al procedimiento almacenado para actualizar el nombre de la etiqueta
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_tag_name_by_id");
 
+            // Registrar parámetros para el SP
+            query.registerStoredProcedureParameter("p_tag_id", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_new_tag_name", String.class, ParameterMode.IN);
+
+            // Asignar los valores de los parámetros
+            query.setParameter("p_tag_id", tag.getTagId());
+            query.setParameter("p_new_tag_name", tag.getTagName());
+
+            // Ejecutar el procedimiento almacenado
+            query.execute();
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al actualizar el nombre de la etiqueta con ID: " + tag.getTagId());
+        }
     }
 }

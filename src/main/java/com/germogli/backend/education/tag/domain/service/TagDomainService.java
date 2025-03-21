@@ -3,6 +3,7 @@ package com.germogli.backend.education.tag.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.education.tag.application.dto.UpdateTagRequestDTO;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import com.germogli.backend.education.tag.domain.repository.TagDomainRepository;
 import lombok.RequiredArgsConstructor;
@@ -102,4 +103,43 @@ public class TagDomainService {
 
         tagDomainRepository.deleteById(id);
     }
+
+    public TagDomain updateTagName(UpdateTagRequestDTO dto) {
+        // Se extrae el usuario autenticado
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = userDetails.getUsername();
+
+        // Verificar que el usuario a modificar exista
+        UserDomain currentUser = userDomainRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
+
+        // Se verifica que el usuario tenga rol administrador
+        boolean isAdmin = currentUser.getRole() != null &&
+                currentUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+
+        // En caso de que no sea administrador se arroja una excepcion
+        if (!isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para actualizar roles de usuario");
+        }
+
+        // Validar que el DTO no esté vacío o nulo
+        if (dto == null || dto.getId() == null || dto.getName() == null || dto.getName().isEmpty()) {
+            throw new IllegalArgumentException("El ID y el nombre de la etiqueta son requeridos.");
+        }
+
+        // Crear un objeto TagDomain a partir del DTO
+        TagDomain tag = TagDomain.builder()
+                .tagId(dto.getId())  // ID de la etiqueta
+                .tagName(dto.getName())  // Nombre de la etiqueta
+                .build();
+
+        // Llamar al repositorio para actualizar el nombre de la etiqueta
+        tagDomainRepository.updateTagName(tag);
+
+        // Obtener el objeto actualizado desde el repositorio, puedes ajustarlo según tu implementación
+        TagDomain updatedTag = tagDomainRepository.getByName(dto.getName());
+
+        return updatedTag;  // Retornar el objeto actualizado
+    }
+
 }

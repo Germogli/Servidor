@@ -1,6 +1,7 @@
 package com.germogli.backend.education.tag.web.controller;
 
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
+import com.germogli.backend.education.tag.application.dto.UpdateTagRequestDTO;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import com.germogli.backend.education.tag.domain.service.TagDomainService;
 import lombok.RequiredArgsConstructor;
@@ -51,4 +52,17 @@ public class TagController {
                 .message("La etiqueta se eliminó correctamente")
                 .build());
     }
+
+    // Endpoint para actualizar el nombre de una etiqueta
+    @PutMapping("/update")
+    public ResponseEntity<ApiResponseDTO<TagDomain>> updateTagName(@RequestBody UpdateTagRequestDTO dto) {
+        TagDomain updatedTag = tagDomainService.updateTagName(dto);
+
+        // Retornar la respuesta exitosa con el objeto actualizado
+        return ResponseEntity.ok(ApiResponseDTO.<TagDomain>builder()
+                .message("Etiqueta actualizada correctamente.")
+                .data(updatedTag)
+                .build());
+    }
+
 }
