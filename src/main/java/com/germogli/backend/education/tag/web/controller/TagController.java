@@ -27,7 +27,7 @@ public class TagController {
      * @param tagName el nombre de la etiqueta a crear.
      * @return ApiResponseDTO con el TagResponseDTO creado.
      */
-    @PostMapping("/create/{tagName}")
+    @PostMapping("/{tagName}")
     public ResponseEntity<ApiResponseDTO<TagResponseDTO>> createTag(@PathVariable String tagName) {
         TagDomain tagDomain = tagDomainService.createTag(tagName);
         // Mapear el TagDomain a TagResponseDTO usando el método auxiliar
@@ -46,7 +46,7 @@ public class TagController {
      * @param tagName el nombre de la etiqueta a buscar.
      * @return ApiResponseDTO con el TagResponseDTO encontrado.
      */
-    @GetMapping("/get/{tagName}")
+    @GetMapping("/{tagName}")
     public ResponseEntity<ApiResponseDTO<TagResponseDTO>> getTagByName(@PathVariable String tagName) {
         TagDomain tagDomain = tagDomainService.getTagByName(tagName);
         // Mapear el objeto de dominio a DTO
@@ -79,7 +79,7 @@ public class TagController {
      * @param dto el TagResponseDTO que contiene el ID y el nuevo nombre.
      * @return ApiResponseDTO con el TagResponseDTO actualizado.
      */
-    @PutMapping("/update")
+    @PutMapping
     public ResponseEntity<ApiResponseDTO<TagResponseDTO>> updateTagName(@RequestBody TagResponseDTO dto) {
         TagDomain updatedTag = tagDomainService.updateTagName(dto);
         // Mapear el objeto de dominio actualizado a DTO
@@ -104,6 +104,24 @@ public class TagController {
         return ResponseEntity.ok(ApiResponseDTO.<List<TagResponseDTO>>builder()
                 .message("Todas las etiquetas encontradas correctamente.")
                 .data(tagResponseList)
+                .build());
+    }
+
+    /**
+     * Endpoint para obtener o crear una etiqueta según su nombre.
+     * Si la etiqueta ya existe, se retorna; si no, se crea y luego se retorna.
+     *
+     * @param tagName el nombre de la etiqueta.
+     * @return ApiResponseDTO con el TagResponseDTO obtenido o creado.
+     */
+    @GetMapping("/getOrCreate/{tagName}")
+    public ResponseEntity<ApiResponseDTO<TagResponseDTO>> getOrCreateTag(@PathVariable String tagName) {
+        TagDomain tagDomain = tagDomainService.getOrCreateTag(tagName);
+        // Mapea el objeto de dominio a DTO
+        TagResponseDTO tagResponse = tagDomainService.toResponse(tagDomain);
+        return ResponseEntity.ok(ApiResponseDTO.<TagResponseDTO>builder()
+                .message("Etiqueta obtenida o creada correctamente")
+                .data(tagResponse)
                 .build());
     }
 }

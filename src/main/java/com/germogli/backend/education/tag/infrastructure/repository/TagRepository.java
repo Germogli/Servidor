@@ -120,4 +120,24 @@ public class TagRepository implements TagDomainRepository {
             throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener todas las etiquetas ");
         }
     }
+
+    @Override
+    public Integer getOrCreateTagId(String tagName) {
+        // Crea la consulta para el procedimiento almacenado sp_get_or_create_tag
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_or_create_tag");
+
+        // Registra el parámetro de entrada (nombre de la etiqueta)
+        query.registerStoredProcedureParameter("p_tag_name", String.class, ParameterMode.IN);
+        // Registra el parámetro de salida (ID de la etiqueta)
+        query.registerStoredProcedureParameter("p_tag_id", Integer.class, ParameterMode.OUT);
+
+        // Establece el valor del parámetro de entrada
+        query.setParameter("p_tag_name", tagName);
+
+        // Ejecuta el procedimiento almacenado
+        query.execute();
+
+        // Obtiene y retorna el valor del parámetro de salida
+        return (Integer) query.getOutputParameterValue("p_tag_id");
+    }
 }

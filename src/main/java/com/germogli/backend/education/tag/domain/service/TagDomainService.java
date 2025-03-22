@@ -142,6 +142,46 @@ public class TagDomainService {
         return tagDomainRepository.findAll();
     }
 
+    public TagDomain getOrCreateTag(String tagName) {
+        // Se extrae el usuario autenticado
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = userDetails.getUsername();
+
+        // Verificar que el usuario a modificar exista
+        UserDomain currentUser = userDomainRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
+
+        // Se verifica que el usuario tenga rol administrador
+        boolean isAdmin = currentUser.getRole() != null &&
+                currentUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+
+        // En caso de que no sea administrador se arroja una excepción
+        if (!isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para actualizar roles de usuario");
+        }
+
+        TagDomain tag = tagDomainRepository.getByName(tagName);
+
+        // Si la etiqueta ya existe, se retorna inmediatamente
+        if (tag != null) {
+            return tag;
+        }
+
+        // Si no existe, se llama al stored procedure para crearla
+        // El método getOrCreateTagId ejecuta el SP y retorna el ID, aunque no lo usemos directamente
+        Integer tagId = tagDomainRepository.getOrCreateTagId(tagName);
+
+        // Vuelve a intentar obtener la etiqueta por su nombre, ahora que debería existir
+        tag = tagDomainRepository.getByName(tagName);
+
+        // Si por alguna razón sigue sin existir, se arroja una excepción
+        if (tag == null) {
+            throw new ResourceNotFoundException("No se pudo obtener o crear la etiqueta con el nombre: " + tagName);
+        }
+
+        return tag;
+    }
+
     /**
      * Método de mapeo para convertir un objeto TagDomain a TagResponseDTO.
      * Este método transforma el modelo de dominio de la etiqueta en el DTO que se enviará en la respuesta.

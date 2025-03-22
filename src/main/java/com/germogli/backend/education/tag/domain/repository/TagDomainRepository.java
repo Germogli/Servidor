@@ -10,4 +10,5 @@ public interface TagDomainRepository {
     void deleteById(Integer tagId);
     void updateTagName(TagDomain tag);
     List<TagDomain> findAll();
+    Integer getOrCreateTagId(String tagName);
 }
