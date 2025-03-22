@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Define las operaciones de persistencia para el dominio Post.
+ * Interfaz para las operaciones de persistencia del dominio Post.
  */
 public interface PostDomainRepository {
     PostDomain save(PostDomain post);

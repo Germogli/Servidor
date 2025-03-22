@@ -22,47 +22,70 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 
+/**
+ * Servicio de autenticación que maneja el login, registro y registro de administradores.
+ * También genera los tokens JWT para los usuarios autenticados.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final @Qualifier("AuthenticationUserRepository") UserDomainRepository userRepository;// para que no haya
-    // errores de inyección de dependencias
+
+    // Repositorio para obtener y persistir usuarios. Se utiliza la cualificación para evitar conflictos de inyección.
+    private final @Qualifier("AuthenticationUserRepository") UserDomainRepository userRepository;
+    // Servicio para generar y validar JWT.
     private final JwtService jwtService;
+    // Codificador de contraseñas.
     private final PasswordEncoder passwordEncoder;
+    // Gestor de autenticación para verificar credenciales.
     private final AuthenticationManager authenticationManager;
 
+    /**
+     * Autentica al usuario y genera un token JWT.
+     *
+     * @param request DTO con las credenciales del usuario.
+     * @return DTO de respuesta con el token generado.
+     * @throws UserNotFoundException Si el usuario no existe.
+     * @throws BadCredentialsException Si la contraseña es incorrecta.
+     */
     public AuthResponseDTO login(LoginRequestDTO request) {
-        // Verifica que el usuario exista en el dominio
+        // Se busca el usuario por su nombre de usuario.
         UserDomain userDomain = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UserNotFoundException("El usuario " + request.getUsername() + " no está registrado"));
 
-        // Intenta autenticar las credenciales
+        // Se intenta autenticar usando el AuthenticationManager.
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
         } catch (BadCredentialsException ex) {
-            // Si la contraseña es incorrecta, se lanza la excepción con un mensaje personalizado
+            // Si la autenticación falla, se lanza una excepción con mensaje personalizado.
             throw new BadCredentialsException("La contraseña ingresada es incorrecta.");
         }
 
-        // Genera el token utilizando el UserDetails obtenido del dominio
+        // Se genera el token JWT usando el UserDetails del usuario.
         String token = jwtService.getToken(userDomain.toUserDetails());
         return AuthResponseDTO.builder().token(token).build();
     }
 
+    /**
+     * Registra un usuario común.
+     *
+     * @param request DTO con los datos de registro.
+     * @return DTO de respuesta con el token JWT generado.
+     * @throws UserAlreadyExistsException Si el usuario ya existe.
+     */
     public AuthResponseDTO register(RegisterRequestDTO request) {
-        // Registro de usuarios comunes: asigna por defecto el rol "COMUN"
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new UserAlreadyExistsException("El usuario " + request.getUsername() + " ya existe.");
         }
 
-        // Se asigna el rol "COMUN"
+        // Asigna el rol por defecto "COMUN"
         Role defaultRole = Role.builder()
                 .id(4)
                 .roleType("COMUN")
                 .build();
 
+        // Crea el objeto de dominio del usuario, codificando la contraseña.
         UserDomain userDomain = UserDomain.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -77,17 +100,24 @@ public class AuthService {
 
         userRepository.save(userDomain);
 
+        // Genera el token JWT para el usuario registrado.
         String token = jwtService.getToken(userDomain.toUserDetails());
         return AuthResponseDTO.builder().token(token).build();
     }
 
     /**
-     * Registra un usuario administrador. Este método se invoca desde un endpoint protegido.
-     * Se realiza una verificación adicional para asegurarse de que el usuario autenticado tenga la authority ADMINISTRADOR.
+     * Registra un usuario administrador.
+     * Este endpoint está protegido y solo puede ser accedido por usuarios con rol ADMINISTRADOR.
+     *
+     * @param request DTO con los datos de registro.
+     * @return DTO de respuesta con el token JWT generado.
+     * @throws AdminAccessDeniedException Si el usuario autenticado no es administrador.
+     * @throws UserAlreadyExistsException Si el usuario ya existe.
      */
     public AuthResponseDTO registerAdmin(RegisterRequestDTO request) {
-        // Verifica que el usuario autenticado tenga la authority ADMINISTRADOR
+        // Obtiene el usuario autenticado del contexto de seguridad.
         UserDetails currentUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        // Verifica que el usuario tenga la autoridad ADMINISTRADOR.
         if (!currentUserDetails.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"))) {
             throw new AdminAccessDeniedException("No se ha reconocido como administrador, no puede realizar esta acción.");
         }
@@ -96,12 +126,13 @@ public class AuthService {
             throw new UserAlreadyExistsException("El usuario " + request.getUsername() + " ya existe.");
         }
 
-        // Asigna el rol "ADMINISTRADOR"
+        // Asigna el rol de administrador.
         Role adminRole = Role.builder()
                 .id(3)
                 .roleType("ADMINISTRADOR")
                 .build();
 
+        // Crea el objeto de dominio para el administrador.
         UserDomain userDomain = UserDomain.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -116,6 +147,7 @@ public class AuthService {
 
         userRepository.save(userDomain);
 
+        // Genera el token JWT para el administrador.
         String token = jwtService.getToken(userDomain.toUserDetails());
         return AuthResponseDTO.builder().token(token).build();
     }
