@@ -7,23 +7,25 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO para la creación de una publicación.
+ * DTO para la creación de una publicación en la comunidad.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreatePostRequestDTO {
+    /**
+     * Tipo de publicación (obligatorio).
+     */
     @NotBlank(message = "El tipo de post es obligatorio")
     private String postType;
 
+    /**
+     * Contenido de la publicación (obligatorio).
+     */
     @NotBlank(message = "El contenido es obligatorio")
     private String content;
-
-    // Opcional: URL del contenido multimedia
     private String multimediaContent;
-
-    // Opcionales: Si el post pertenece a un grupo o hilo
     private Integer groupId;
     private Integer threadId;
 }

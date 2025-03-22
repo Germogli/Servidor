@@ -1,44 +1,46 @@
 package com.germogli.backend.community.post.domain.service;
 
+import com.germogli.backend.authentication.domain.model.UserDomain;
+import com.germogli.backend.common.notification.NotificationPublisher;
+import com.germogli.backend.community.post.domain.model.PostDomain;
+import com.germogli.backend.community.post.domain.repository.PostDomainRepository;
 import com.germogli.backend.community.post.application.dto.CreatePostRequestDTO;
 import com.germogli.backend.community.post.application.dto.PostResponseDTO;
 import com.germogli.backend.community.post.application.dto.UpdatePostRequestDTO;
-import com.germogli.backend.community.post.domain.model.PostDomain;
-import com.germogli.backend.community.post.domain.repository.PostDomainRepository;
+import com.germogli.backend.community.domain.service.CommunitySharedService;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
-import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Servicio de dominio para las publicaciones.
- * Contiene la lógica de negocio, incluyendo la validación de permisos para eliminar publicaciones.
+ * Servicio de dominio para la gestión de publicaciones.
+ * Contiene la lógica para crear, obtener, listar, actualizar y eliminar posts.
  */
-@RequiredArgsConstructor
 @Service
+@RequiredArgsConstructor
 public class PostDomainService {
 
-    private final @Qualifier("communityPostRepository") PostDomainRepository postRepository;
-    // Repositorio del módulo de autenticación para obtener el usuario autenticado
-    private final UserDomainRepository userRepository;
+    // Repositorio para operaciones de persistencia de posts.
+    private final PostDomainRepository postRepository;
+    // Servicio compartido para obtener el usuario autenticado y verificar roles.
+    private final CommunitySharedService sharedService;
+    // Servicio para enviar notificaciones.
+    private final NotificationPublisher notificationPublisher;
 
+    /**
+     * Crea una nueva publicación.
+     *
+     * @param request DTO con los datos para crear el post.
+     * @return Publicación creada.
+     */
     public PostDomain createPost(CreatePostRequestDTO request) {
-        // Extrae el usuario autenticado del contexto de seguridad
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username = userDetails.getUsername();
-        UserDomain currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
-
-        // Crea el objeto de dominio asignándole el userId y la fecha de creación
-        PostDomain postDomain = PostDomain.builder()
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+        PostDomain post = PostDomain.builder()
                 .userId(currentUser.getId())
                 .postType(request.getPostType())
                 .content(request.getContent())
@@ -47,73 +49,101 @@ public class PostDomainService {
                 .threadId(request.getThreadId())
                 .postDate(LocalDateTime.now())
                 .build();
-
-        return postRepository.save(postDomain);
+        PostDomain savedPost = postRepository.save(post);
+        notificationPublisher.publishNotification(currentUser.getId(),
+                "Se ha creado un nuevo post: " + request.getContent(),
+                "post");
+        return savedPost;
     }
 
+    /**
+     * Obtiene una publicación por su ID.
+     *
+     * @param id Identificador del post.
+     * @return Publicación encontrada.
+     * @throws ResourceNotFoundException si no se encuentra el post.
+     */
     public PostDomain getPostById(Integer id) {
         return postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
     }
 
+    /**
+     * Obtiene todas las publicaciones.
+     *
+     * @return Lista de posts.
+     * @throws ResourceNotFoundException si no hay publicaciones disponibles.
+     */
     public List<PostDomain> getAllPosts() {
-        return postRepository.findAll();
+        List<PostDomain> posts = postRepository.findAll();
+        if (posts.isEmpty()) {
+            throw new ResourceNotFoundException("No hay publicaciones disponibles.");
+        }
+        return posts;
     }
 
     /**
      * Actualiza una publicación.
-     * Solo se permite actualizar si el usuario autenticado es el propietario del post.
+     * Solo el propietario o un administrador pueden actualizar el post.
+     *
+     * @param id      Identificador del post a actualizar.
+     * @param request DTO con los datos a actualizar.
+     * @return Publicación actualizada.
+     * @throws AccessDeniedException si el usuario no tiene permisos.
      */
+    @Transactional
     public PostDomain updatePost(Integer id, UpdatePostRequestDTO request) {
-        // Obtiene el usuario autenticado
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username = userDetails.getUsername();
-        UserDomain currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
-
-        // Recupera el post existente
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
         PostDomain existingPost = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
 
-        // Verifica que el usuario autenticado sea el dueño del post
-        if (!existingPost.getUserId().equals(currentUser.getId())) {
-            throw new AccessDeniedException("No tiene permisos para actualizar esta publicación");
+        boolean isOwner = existingPost.getUserId().equals(currentUser.getId());
+        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para actualizar esta publicación.");
         }
 
-        // Actualiza los datos y la fecha de modificación
         existingPost.setPostType(request.getPostType());
         existingPost.setContent(request.getContent());
         existingPost.setMultimediaContent(request.getMultimediaContent());
         existingPost.setPostDate(LocalDateTime.now());
-        return postRepository.save(existingPost);
+        PostDomain updatedPost = postRepository.save(existingPost);
+        notificationPublisher.publishNotification(currentUser.getId(),
+                "Se ha actualizado su post",
+                "post");
+        return updatedPost;
     }
 
     /**
-     * Elimina una publicación. La eliminación solo se permite si:
-     * - El usuario autenticado es el propietario de la publicación, o
-     * - El usuario tiene rol ADMINISTRADOR.
+     * Elimina una publicación.
+     * Solo el propietario o un administrador pueden eliminar el post.
+     *
+     * @param id Identificador del post a eliminar.
+     * @throws AccessDeniedException si el usuario no tiene permisos.
      */
+    @Transactional
     public void deletePost(Integer id) {
-        // Obtener el usuario autenticado
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username = userDetails.getUsername();
-        UserDomain currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
-        // Obtener la publicación
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
         PostDomain post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
 
-        // Verificar permisos: solo el propietario o un administrador pueden eliminar
         boolean isOwner = post.getUserId().equals(currentUser.getId());
-        boolean isAdmin = currentUser.getRole() != null &&
-                currentUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
         if (!isOwner && !isAdmin) {
-            throw new AccessDeniedException("No tiene permisos para eliminar esta publicación");
+            throw new AccessDeniedException("No tiene permisos para eliminar esta publicación.");
         }
         postRepository.deleteById(id);
+        notificationPublisher.publishNotification(currentUser.getId(),
+                "Su post ha sido eliminado",
+                "post");
     }
 
-    // Método de mapeo para convertir el dominio a DTO de respuesta
+    /**
+     * Convierte un objeto PostDomain en un DTO de respuesta.
+     *
+     * @param post Publicación a convertir.
+     * @return DTO con la información del post.
+     */
     public PostResponseDTO toResponse(PostDomain post) {
         return PostResponseDTO.builder()
                 .id(post.getId())
@@ -127,10 +157,13 @@ public class PostDomainService {
                 .build();
     }
 
-    // Métodos auxiliares para transformar una lista de dominios a DTOs
+    /**
+     * Convierte una lista de PostDomain en una lista de DTOs de respuesta.
+     *
+     * @param posts Lista de publicaciones.
+     * @return Lista de DTOs.
+     */
     public List<PostResponseDTO> toResponseList(List<PostDomain> posts) {
-        return posts.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return posts.stream().map(this::toResponse).collect(Collectors.toList());
     }
 }

@@ -1,22 +1,28 @@
 package com.germogli.backend.community.post.infrastructure.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.germogli.backend.community.infrastructure.entity.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+import lombok.AccessLevel;
 import java.time.LocalDateTime;
 
 /**
- * Entidad JPA que mapea la tabla "posts" en la base de datos.
+ * Entidad JPA que representa una publicación.
+ * Mapea la tabla posts.
  */
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@SuperBuilder
+@NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 @Entity(name = "CommunityPostEntity")
 @Table(name = "posts")
-public class PostEntity {
+public class PostEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

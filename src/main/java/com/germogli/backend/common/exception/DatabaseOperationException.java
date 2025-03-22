@@ -1,6 +1,10 @@
 package com.germogli.backend.common.exception;
 
-public class DatabaseOperationException extends RuntimeException{
+/**
+ * Excepción personalizada para representar errores durante operaciones de base de datos.
+ * Permite encapsular la causa original del error para un mejor diagnóstico.
+ */
+public class DatabaseOperationException extends RuntimeException {
     public DatabaseOperationException(String message) {
         super(message);
     }

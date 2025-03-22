@@ -7,19 +7,24 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO para la actualización de una publicación.
+ * DTO para actualizar una publicación.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdatePostRequestDTO {
+    /**
+     * Tipo de publicación (obligatorio).
+     */
     @NotBlank(message = "El tipo de post es obligatorio")
     private String postType;
 
+    /**
+     * Contenido de la publicación (obligatorio).
+     */
     @NotBlank(message = "El contenido es obligatorio")
     private String content;
 
-    // Opcional: Actualización del contenido multimedia
     private String multimediaContent;
 }

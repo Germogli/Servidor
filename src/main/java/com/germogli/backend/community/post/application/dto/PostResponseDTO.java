@@ -1,11 +1,11 @@
 package com.germogli.backend.community.post.application.dto;
 
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 /**
- * DTO de respuesta para representar una publicación.
+ * DTO de respuesta para una publicación.
  */
 @Data
 @Builder
