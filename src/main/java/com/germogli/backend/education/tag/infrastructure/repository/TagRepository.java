@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository("educationTagRepository")
 @RequiredArgsConstructor
@@ -105,5 +106,38 @@ public class TagRepository implements TagDomainRepository {
         } catch (Exception e) {
             throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al actualizar el nombre de la etiqueta con ID: " + tag.getTagId());
         }
+    }
+
+    @Override
+    public List<TagDomain> findAll() {
+        try {
+            // Llamar al procedimiento almacenado para obtener todas las etiquetas
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_tags", TagEntity.class);
+            query.execute();
+            List<TagEntity> resultList = query.getResultList();
+            return resultList.stream().map(TagDomain::fromEntity).collect(Collectors.toList());
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener todas las etiquetas ");
+        }
+    }
+
+    @Override
+    public Integer getOrCreateTagId(String tagName) {
+        // Crea la consulta para el procedimiento almacenado sp_get_or_create_tag
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_or_create_tag");
+
+        // Registra el parámetro de entrada (nombre de la etiqueta)
+        query.registerStoredProcedureParameter("p_tag_name", String.class, ParameterMode.IN);
+        // Registra el parámetro de salida (ID de la etiqueta)
+        query.registerStoredProcedureParameter("p_tag_id", Integer.class, ParameterMode.OUT);
+
+        // Establece el valor del parámetro de entrada
+        query.setParameter("p_tag_name", tagName);
+
+        // Ejecuta el procedimiento almacenado
+        query.execute();
+
+        // Obtiene y retorna el valor del parámetro de salida
+        return (Integer) query.getOutputParameterValue("p_tag_id");
     }
 }
