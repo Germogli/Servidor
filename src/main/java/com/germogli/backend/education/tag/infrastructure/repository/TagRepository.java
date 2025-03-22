@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository("educationTagRepository")
 @RequiredArgsConstructor
@@ -104,6 +105,19 @@ public class TagRepository implements TagDomainRepository {
             query.execute();
         } catch (Exception e) {
             throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al actualizar el nombre de la etiqueta con ID: " + tag.getTagId());
+        }
+    }
+
+    @Override
+    public List<TagDomain> findAll() {
+        try {
+            // Llamar al procedimiento almacenado para obtener todas las etiquetas
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_tags", TagEntity.class);
+            query.execute();
+            List<TagEntity> resultList = query.getResultList();
+            return resultList.stream().map(TagDomain::fromEntity).collect(Collectors.toList());
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener todas las etiquetas ");
         }
     }
 }

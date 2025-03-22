@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateTagRequestDTO {
+public class TagResponseDTO {
     private Integer id;
     private String name;
 }
