@@ -1,7 +1,7 @@
 package com.germogli.backend.education.module.web.controller;
 
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
-
+import com.germogli.backend.education.module.application.dto.ModuleResponseDTO;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import lombok.RequiredArgsConstructor;
@@ -20,15 +20,30 @@ public class ModuleController {
 
     private final ModuleDomainService moduleDomainService;
 
-    @GetMapping("/getAllModules")
-    public ResponseEntity<ApiResponseDTO<List<ModuleDomain>>> getAllModules() {
-        List<ModuleDomain> moduleList = moduleDomainService.getAllModulesWithTags();
+    @GetMapping
+    public ResponseEntity<ApiResponseDTO<List<ModuleResponseDTO>>> getAllModules() {
+        List<ModuleDomain> moduleDomains = moduleDomainService.getAllModulesWithTags();
+        // Mapear la lista de dominio a lista de DTO usando el método auxiliar
+        List<ModuleResponseDTO> moduleResponseList = moduleDomainService.toResponseList(moduleDomains);
 
-        ApiResponseDTO<List<ModuleDomain>> response = ApiResponseDTO.<List<ModuleDomain>>builder()
+        return ResponseEntity.ok(ApiResponseDTO.<List<ModuleResponseDTO>>builder()
                 .message("Módulos recuperados correctamente")
-                .data(moduleList)
-                .build();
-
-        return ResponseEntity.ok(response);
+                .data(moduleResponseList)
+                .build());
     }
+
+    @PostMapping
+    public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> createModule(@RequestBody ModuleResponseDTO moduleDTO) {
+        // Convertimos el DTO a Domain antes de pasarlo al servicio
+        ModuleDomain createdModule = moduleDomainService.createModuleWithTags(moduleDTO.toDomain());
+
+        // Convertimos el dominio creado de vuelta a DTO para la respuesta
+        ModuleResponseDTO responseDTO = ModuleResponseDTO.fromDomain(createdModule);
+
+        return ResponseEntity.ok(ApiResponseDTO.<ModuleResponseDTO>builder()
+                .message("Módulo creado correctamente")
+                .data(responseDTO)
+                .build());
+    }
+
 }

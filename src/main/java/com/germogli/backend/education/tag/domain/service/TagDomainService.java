@@ -139,7 +139,11 @@ public class TagDomainService {
     }
 
     public List<TagDomain> getAllTags() {
-        return tagDomainRepository.findAll();
+        List<TagDomain> tags = tagDomainRepository.findAll();
+        if (tags.isEmpty()) {
+            throw new ResourceNotFoundException("No hay etiquetas disponibles.");
+        }
+        return tags;
     }
 
     public TagDomain getOrCreateTag(String tagName) {

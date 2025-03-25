@@ -1,5 +1,6 @@
 package com.germogli.backend.education.module.domain.model;
 
+import com.germogli.backend.education.domain.model.Converter;
 import com.germogli.backend.education.module.infrastructure.entity.ModuleEntity;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import lombok.Builder;
@@ -13,43 +14,70 @@ import java.util.stream.Collectors;
 
 /**
  * Modelo de dominio para el módulo de educación.
- * Este modelo representa la lógica de negocio y se utiliza en el servicio.
+ * Representa la lógica de negocio y se utiliza en el servicio.
+ *
+ * Además, implementa la interfaz Converter para facilitar la conversión
+ * entre ModuleDomain y ModuleEntity.
  */
 @Data
 @Builder
-public class ModuleDomain {
+public class ModuleDomain implements Converter<ModuleDomain, ModuleEntity> {
+
     private Integer moduleId;
     private String title;
     private String description;
-    private LocalDateTime creationDate;
+    @Builder.Default
+    private LocalDateTime creationDate = LocalDateTime.now();
     private Set<TagDomain> tags = new HashSet<>();
 
-    // Conversión de entidad a dominio
-    public static ModuleDomain fromEntity(ModuleEntity entity) {
+    /**
+     * Implementación de la conversión desde la entidad a dominio.
+     *
+     * @param entity Entidad de infraestructura a convertir.
+     * @return Instancia de ModuleDomain resultante.
+     */
+    @Override
+    public ModuleDomain fromEntity(ModuleEntity entity) {
         return ModuleDomain.builder()
                 .moduleId(entity.getId())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .creationDate(entity.getCreationDate())
-                .tags(TagDomain.fromEntities(entity.getTags())) // Convierte las entidades de Tags
+                .tags(TagDomain.fromEntities(entity.getTags()))
                 .build();
     }
 
-    // Conversión de dominio a entidad
+    /**
+     * Implementación de la conversión desde el modelo de dominio a la entidad.
+     *
+     * @return Entidad ModuleEntity resultante.
+     */
+    @Override
     public ModuleEntity toEntity() {
         return ModuleEntity.builder()
                 .id(this.moduleId)
                 .title(this.title)
                 .description(this.description)
                 .creationDate(this.creationDate)
-                .tags(TagDomain.toEntities(this.tags)) // Convierte las entidades de Tags
+                .tags(TagDomain.toEntities(this.tags))
                 .build();
     }
 
-    // Método de conversión de lista de entidades a lista de objetos de dominio
+    /**
+     * Método de conveniencia para convertir una lista de entidades a modelos de dominio.
+     *
+     * @param entities Lista de ModuleEntity.
+     * @return Lista de ModuleDomain.
+     */
     public static List<ModuleDomain> fromEntities(List<ModuleEntity> entities) {
         return entities.stream()
-                .map(ModuleDomain::fromEntity)
+                .map(entity -> ModuleDomain.builder()
+                        .moduleId(entity.getId())
+                        .title(entity.getTitle())
+                        .description(entity.getDescription())
+                        .creationDate(entity.getCreationDate())
+                        .tags(TagDomain.fromEntities(entity.getTags()))
+                        .build())
                 .collect(Collectors.toList());
     }
 }
