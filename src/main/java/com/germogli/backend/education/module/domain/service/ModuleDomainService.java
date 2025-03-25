@@ -1,5 +1,6 @@
 package com.germogli.backend.education.module.domain.service;
 
+import com.germogli.backend.education.module.application.dto.ModuleResponseDTO;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.infrastructure.crud.EducationModuleCrudRepository;
 import com.germogli.backend.education.module.infrastructure.entity.ModuleEntity;
@@ -24,5 +25,10 @@ public class ModuleDomainService {
 
         // se usa el metodo fromEntities() para convertirlos a objetos de dominio
         return ModuleDomain.fromEntities(moduleEntities);
+    }
+
+    // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
+    public List<ModuleResponseDTO> toResponseList(List<ModuleDomain> moduleDomains) {
+        return ModuleResponseDTO.fromDomains(moduleDomains);
     }
 }
