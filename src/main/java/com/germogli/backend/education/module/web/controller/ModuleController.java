@@ -31,4 +31,19 @@ public class ModuleController {
                 .data(moduleResponseList)
                 .build());
     }
+
+    @PostMapping
+    public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> createModule(@RequestBody ModuleResponseDTO moduleDTO) {
+        // Convertimos el DTO a Domain antes de pasarlo al servicio
+        ModuleDomain createdModule = moduleDomainService.createModuleWithTags(moduleDTO.toDomain());
+
+        // Convertimos el dominio creado de vuelta a DTO para la respuesta
+        ModuleResponseDTO responseDTO = ModuleResponseDTO.fromDomain(createdModule);
+
+        return ResponseEntity.ok(ApiResponseDTO.<ModuleResponseDTO>builder()
+                .message("Módulo creado correctamente")
+                .data(responseDTO)
+                .build());
+    }
+
 }
