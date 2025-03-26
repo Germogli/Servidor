@@ -21,18 +21,15 @@ public class ModuleController {
 
     private final ModuleDomainService moduleDomainService;
 
-//    @GetMapping
-//    public ResponseEntity<ApiResponseDTO<List<ModuleResponseDTO>>> getAllModules() {
-//        List<ModuleDomain> moduleDomains = moduleDomainService.getAllModulesWithTags();
-//        // Mapear la lista de dominio a lista de DTO usando el método auxiliar
-//        List<ModuleResponseDTO> moduleResponseList = moduleDomainService.toResponseList(moduleDomains);
-//
-//        return ResponseEntity.ok(ApiResponseDTO.<List<ModuleResponseDTO>>builder()
-//                .message("Módulos recuperados correctamente")
-//                .data(moduleResponseList)
-//                .build());
-//    }
-//
+    @GetMapping
+    public ResponseEntity<ApiResponseDTO<List<ModuleResponseDTO>>> getAllModules() {
+        List<ModuleResponseDTO> modules = moduleDomainService.toResponseList(moduleDomainService.getAllModules());
+        return ResponseEntity.ok(ApiResponseDTO.<List<ModuleResponseDTO>>builder()
+                .message("Módulos recuperados correctamente")
+                .data(modules)
+                .build());
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> createModule(@RequestBody CreateModuleResponseDTO moduleDTO) {
         ModuleDomain module = moduleDomainService.createModule(moduleDTO);

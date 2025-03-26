@@ -36,6 +36,26 @@ public class ModuleDomainService {
     // Servicio compartido para obtener el usuario autenticado y verificar roles.
     private final EducationSharedService educationSharedService;
 
+    /**
+     * Obtiene todos los modulos.
+     *
+     * @return Lista de modulos.
+     * @throws ResourceNotFoundException si no hay modulos disponibles.
+     */
+    public List<ModuleDomain> getAllModules() {
+        List<ModuleDomain> modules = moduleDomainRepository.getAll();
+        if (modules.isEmpty()) {
+            throw new ResourceNotFoundException("No hay modulos para mostrar");
+        }
+        return modules;
+    }
+
+    /**
+     * Crea un nuevo modulo.
+     *
+     * @param dto DTO con los datos para crear el modulo.
+     * @return modulo creada.
+     */
     public ModuleDomain createModule(CreateModuleResponseDTO dto) {
         UserDomain currentUser = educationSharedService.getAuthenticatedUser();
 

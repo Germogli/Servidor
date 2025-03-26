@@ -11,6 +11,7 @@ import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Repository("educationModuleRepository")
@@ -45,5 +46,13 @@ public class ModuleRepository implements ModuleDomainRepository {
         moduleDomain.setModuleId(generatedId);
 
         return moduleDomain;
+    }
+
+    @Override
+    public List<ModuleDomain> getAll() {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_modules_with_tags", ModuleEntity.class);
+        query.execute();
+        List<ModuleEntity> resultList = query.getResultList();
+        return resultList.stream().map(ModuleDomain::fromEntityStatic).collect(Collectors.toList());
     }
 }

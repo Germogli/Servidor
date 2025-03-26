@@ -28,8 +28,4 @@ public class TagEntity {
 
     @Column(name = "tag_name", nullable = false, unique = true)
     private String name;
-
-    // Relación inversa con Module
-    @ManyToMany(mappedBy = "tags")
-    private Set<ModuleEntity> modules = new HashSet<>();
 }

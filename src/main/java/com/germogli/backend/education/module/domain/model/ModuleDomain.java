@@ -47,6 +47,23 @@ public class ModuleDomain implements Converter<ModuleDomain, ModuleEntity> {
     }
 
     /**
+     * Método estático que convierte una entidad de tipo ModuleEntity en un objeto de dominio ModuleDomain.
+     * Este método permite usar la referencia de método, por ejemplo, ModuleDomain::fromEntityStatic.
+     *
+     * @param entity La entidad ModuleEntity que se desea convertir.
+     * @return Una instancia de ModuleDomain con los datos mapeados desde la entidad.
+     */
+    public static ModuleDomain fromEntityStatic(ModuleEntity entity) {
+        return ModuleDomain.builder()
+                .moduleId(entity.getId())
+                .title(entity.getTitle())
+                .description(entity.getDescription())
+                .creationDate(entity.getCreationDate())
+                .tags(TagDomain.fromEntities(entity.getTags()))
+                .build();
+    }
+
+    /**
      * Implementación de la conversión desde el modelo de dominio a la entidad.
      *
      * @return Entidad ModuleEntity resultante.
