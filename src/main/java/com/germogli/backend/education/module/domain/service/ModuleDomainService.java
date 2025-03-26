@@ -1,20 +1,22 @@
 package com.germogli.backend.education.module.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.education.module.application.dto.CreateModuleResponseDTO;
+import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.application.dto.ModuleResponseDTO;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.domain.repository.ModuleDomainRepository;
-import com.germogli.backend.education.module.infrastructure.crud.EducationModuleCrudRepository;
-import com.germogli.backend.education.module.infrastructure.entity.ModuleEntity;
-
+import com.germogli.backend.education.tag.application.dto.TagResponseDTO;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
+import com.germogli.backend.education.tag.domain.repository.TagDomainRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.stream.Collectors; // Importar Collectors
 
 
@@ -28,54 +30,39 @@ import java.util.List;
 @Service
 public class ModuleDomainService {
 
-    private final EducationModuleCrudRepository moduleCrudRepository;
+    // Repositorio para operaciones de persistencia de modulos y etiqutas.
     private final ModuleDomainRepository moduleDomainRepository;
-    private final UserDomainRepository userDomainRepository;
+    private final TagDomainRepository tagDomainRepository;
+    // Servicio compartido para obtener el usuario autenticado y verificar roles.
+    private final EducationSharedService educationSharedService;
 
-    public List<ModuleDomain> getAllModulesWithTags() {
-        // Se obtiene la lista de entidades
-        List<ModuleEntity> moduleEntities = moduleCrudRepository.findAll();
+    public ModuleDomain createModule(CreateModuleResponseDTO dto) {
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
 
-        // se usa el metodo fromEntities() para convertirlos a objetos de dominio
-        return ModuleDomain.fromEntities(moduleEntities);
-    }
-
-    // Metodo para crear un modulo con etiquetas
-    public ModuleDomain createModuleWithTags(ModuleDomain moduleDomain) {
-        // Se extrae el usuario autenticado
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username = userDetails.getUsername();
-
-        // Verificar que el usuario a modificar exista
-        UserDomain currentUser = userDomainRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado para el username: " + username));
-
-        // Se verifica que el usuario tenga rol administrador
-        boolean isAdmin = currentUser.getRole() != null &&
-                currentUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
-
-        // En caso de que no sea administrador se arroja una excepción
-        if (!isAdmin) {
-            throw new AccessDeniedException("No tiene permisos para actualizar roles de usuario");
+        // Verificar permisos de administrador
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para crear módulos.");
         }
 
-        // Validar que el título no esté vacío
-        if (moduleDomain.getTitle() == null || moduleDomain.getTitle().trim().isEmpty()) {
-            throw new ResourceNotFoundException("El título del módulo no puede estar vacío");
-        }
+        // Verificar que todos los tags existen
+        Set<TagDomain> tags = dto.getTagIds().stream()
+                .map(tagId -> {
+                    TagDomain tag = tagDomainRepository.getById(tagId);  // Este método debería devolver null si no encuentra la etiqueta
+                    if (tag == null) {
+                        throw new ResourceNotFoundException("Tag no encontrado con ID: " + tagId);  // Lanzamos la excepción si es null
+                    }
+                    return tag;
+                })
+                .collect(Collectors.toSet());
 
-        // Validar que la descripción no esté vacía
-        if (moduleDomain.getDescription() == null || moduleDomain.getDescription().trim().isEmpty()) {
-            throw new ResourceNotFoundException("La descripción del módulo no puede estar vacía");
-        }
+        ModuleDomain module = ModuleDomain.builder()
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .tags(tags)
+                .creationDate(LocalDateTime.now())
+                .build();
 
-        // Validar que la lista de etiquetas no esté vacía
-        if (moduleDomain.getTags() == null || moduleDomain.getTags().isEmpty()) {
-            throw new ResourceNotFoundException("Debe proporcionar al menos una etiqueta para el módulo");
-        }
-
-        // Delegar la creación al repositorio
-        return moduleDomainRepository.createModuleWithTags(moduleDomain);
+        return moduleDomainRepository.createModuleWithTags(module);
     }
 
     // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
@@ -91,15 +78,21 @@ public class ModuleDomainService {
      * @return El objeto ModuleResponseDTO con la información mapeada.
      */
     public ModuleResponseDTO toResponse(ModuleDomain module) {
+        Set<TagResponseDTO> tagResponses = module.getTags().stream()
+                .map(tagDomain -> TagResponseDTO.builder()
+                        .id(tagDomain.getTagId())
+                        .name(tagDomain.getTagName())
+                        .build())
+                .collect(Collectors.toSet());
+
         return ModuleResponseDTO.builder()
-                .moduleId(module.getModuleId())            // Mapea moduleId del dominio al id del DTO
-                .title(module.getTitle())                  // Mapea el título del módulo
-                .description(module.getDescription())      // Mapea la descripción del módulo
-                .creationDate(module.getCreationDate())    // Mapea la fecha de creación
-                .tagNames(module.getTags().stream()         // Mapea las etiquetas
-                        .map(TagDomain::getTagName)            // Obtiene solo los nombres de las etiquetas
-                        .collect(Collectors.toSet()))          // Recolecta en un Set de Strings
+                .moduleId(module.getModuleId())
+                .title(module.getTitle())
+                .description(module.getDescription())
+                .creationDate(module.getCreationDate())
+                .tags(tagResponses)
                 .build();
     }
+
 
 }

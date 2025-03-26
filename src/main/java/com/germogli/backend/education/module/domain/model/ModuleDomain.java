@@ -26,7 +26,6 @@ public class ModuleDomain implements Converter<ModuleDomain, ModuleEntity> {
     private Integer moduleId;
     private String title;
     private String description;
-    @Builder.Default
     private LocalDateTime creationDate = LocalDateTime.now();
     private Set<TagDomain> tags = new HashSet<>();
 
