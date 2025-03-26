@@ -63,7 +63,7 @@ public class ModuleRepository implements ModuleDomainRepository {
             Set<TagDomain> persistedTags = moduleDomain.getTags().stream()
                     .map(tag -> {
                         // Buscar la etiqueta por su nombre en la base de datos
-                        TagDomain tagDomain = tagDomainRepository.getByName(tag.getTagName());
+                        TagDomain tagDomain = tagDomainRepository.getById(tag.getTagId());
 
                         if (tagDomain == null) {
                             throw new ResourceNotFoundException("Etiqueta no encontrada: " + tag.getTagName());

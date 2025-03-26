@@ -6,9 +6,10 @@ import java.util.List;
 
 public interface TagDomainRepository {
     TagDomain save(String tagName);
+    TagDomain getById(Integer tagId);
     TagDomain getByName(String tagName);
     void deleteById(Integer tagId);
     void updateTagName(TagDomain tag);
     List<TagDomain> findAll();
-    Integer getOrCreateTagId(String tagName);
+    Integer getOrCreateTag(String tagName);
 }
