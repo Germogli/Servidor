@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * Controlador REST para gestionar los módulos en el módulo Education.
+ * Proporciona endpoints para realizar operaciones CRUD sobre módulos.
  */
 @RestController
 @RequestMapping("/modules")
@@ -23,6 +24,11 @@ public class ModuleController {
 
     private final ModuleDomainService moduleDomainService;
 
+    /**
+     * Recupera todos los módulos disponibles.
+     *
+     * @return ResponseEntity con una lista de módulos y un mensaje de éxito.
+     */
     @GetMapping
     public ResponseEntity<ApiResponseDTO<List<ModuleResponseDTO>>> getAllModules() {
         List<ModuleResponseDTO> modules = moduleDomainService.toResponseList(moduleDomainService.getAllModules());
@@ -32,6 +38,12 @@ public class ModuleController {
                 .build());
     }
 
+    /**
+     * Crea un nuevo módulo en el sistema.
+     *
+     * @param moduleDTO Datos del módulo a crear.
+     * @return ResponseEntity con el módulo creado y un mensaje de éxito.
+     */
     @PostMapping
     public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> createModule(@RequestBody CreateModuleResponseDTO moduleDTO) {
         ModuleDomain module = moduleDomainService.createModule(moduleDTO);
@@ -41,6 +53,13 @@ public class ModuleController {
                 .build());
     }
 
+    /**
+     * Actualiza un módulo existente identificado por su ID.
+     *
+     * @param moduleId Identificador único del módulo a actualizar.
+     * @param moduleDTO Datos para actualizar el módulo.
+     * @return ResponseEntity con el módulo actualizado y un mensaje de éxito.
+     */
     @PutMapping("/{moduleId}")
     public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> updateModule(
             @PathVariable Integer moduleId,
@@ -53,6 +72,12 @@ public class ModuleController {
                 .build());
     }
 
+    /**
+     * Recupera un módulo específico por su identificador.
+     *
+     * @param moduleId Identificador único del módulo.
+     * @return ResponseEntity con el módulo encontrado y un mensaje de éxito.
+     */
     @GetMapping("/{moduleId}")
     public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> getModuleById(@PathVariable Integer moduleId) {
         ModuleDomain module = moduleDomainService.getModuleById(moduleId);
@@ -65,8 +90,8 @@ public class ModuleController {
     /**
      * Obtiene los módulos asociados a una o más etiquetas.
      *
-     * @param tagIds Lista de IDs de etiquetas.
-     * @return Lista de módulos encontrados.
+     * @param tagIds Lista de IDs de etiquetas para filtrar los módulos.
+     * @return ResponseEntity con la lista de módulos encontrados y un mensaje de éxito.
      */
     @GetMapping("/filter")
     public ResponseEntity<ApiResponseDTO<List<ModuleResponseDTO>>> getModulesByTags(@RequestParam List<Integer> tagIds) {
@@ -83,8 +108,8 @@ public class ModuleController {
     /**
      * Elimina un módulo por su ID.
      *
-     * @param moduleId ID del módulo a eliminar.
-     * @return Respuesta con mensaje de éxito.
+     * @param moduleId Identificador único del módulo a eliminar.
+     * @return ResponseEntity con un mensaje de éxito después de eliminar el módulo.
      */
     @DeleteMapping("/{moduleId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteModule(@PathVariable Integer moduleId) {
@@ -94,5 +119,4 @@ public class ModuleController {
                 .message("Módulo eliminado correctamente")
                 .build());
     }
-
 }
