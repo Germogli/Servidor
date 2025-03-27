@@ -18,6 +18,7 @@ public class GuideResponseDTO {
     private String title;
     private String description;
     private String pdfUrl;
+    private String pdfFileName;
     private LocalDateTime creationDate;
     private Integer moduleId; // Para conocer a qué módulo pertenece la guía
 
@@ -33,8 +34,9 @@ public class GuideResponseDTO {
                 .title(domain.getTitle())
                 .description(domain.getDescription())
                 .pdfUrl(domain.getPdfUrl())
+                .pdfFileName(domain.getPdfFileName())
                 .creationDate(domain.getCreationDate())
-                .moduleId(domain.getModule() != null ? domain.getModule().getModuleId() : null)
+                .moduleId(domain.getModuleId() != null ? domain.getModuleId().getModuleId() : null)
                 .build();
     }
 
@@ -49,8 +51,9 @@ public class GuideResponseDTO {
                 .title(this.title)
                 .description(this.description)
                 .pdfUrl(this.pdfUrl)
+                .pdfFileName(this.pdfFileName)
                 .creationDate(this.creationDate)
-                .module(ModuleDomain.builder().moduleId(this.moduleId).build())
+                .moduleId(ModuleDomain.builder().moduleId(this.moduleId).build())
                 .build();
     }
 }

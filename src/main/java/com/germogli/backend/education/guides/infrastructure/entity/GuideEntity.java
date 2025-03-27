@@ -33,6 +33,9 @@ public class GuideEntity {
     @Column(nullable = false, name = "pdf_url")
     private String pdfUrl;
 
+    @Column(nullable = false, name = "pdf_file_name")
+    private String pdfFileName;
+
     @Column(name = "publication_date", updatable = false, insertable = false)
     private LocalDateTime creationDate;
 

@@ -22,8 +22,9 @@ public class GuideDomain implements Converter<GuideDomain, GuideEntity> {
     private String title;
     private String description;
     private String pdfUrl;
+    private String pdfFileName;
     private LocalDateTime creationDate;
-    private ModuleDomain module; // Asociado al módulo al que pertenece la guía
+    private ModuleDomain moduleId; // Asociado al módulo al que pertenece la guía
 
     /**
      * Convierte una entidad GuideEntity en un objeto de dominio GuideDomain.
@@ -38,9 +39,10 @@ public class GuideDomain implements Converter<GuideDomain, GuideEntity> {
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .pdfUrl(entity.getPdfUrl())
+                .pdfFileName(entity.getPdfFileName())
                 .creationDate(entity.getCreationDate())
                 // Convertir el módulo a dominio; aquí solo asignamos el id, pero se puede expandir si es necesario
-                .module(ModuleDomain.builder().moduleId(entity.getModuleId().getId()).build())
+                .moduleId(ModuleDomain.builder().moduleId(entity.getModuleId().getId()).build())
                 .build();
     }
 
@@ -56,8 +58,9 @@ public class GuideDomain implements Converter<GuideDomain, GuideEntity> {
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .pdfUrl(entity.getPdfUrl())
+                .pdfFileName(entity.getPdfFileName())
                 .creationDate(entity.getCreationDate())
-                .module(ModuleDomain.builder().moduleId(entity.getModuleId().getId()).build())
+                .moduleId(ModuleDomain.builder().moduleId(entity.getModuleId().getId()).build())
                 .build();
     }
 
@@ -73,9 +76,10 @@ public class GuideDomain implements Converter<GuideDomain, GuideEntity> {
                 .title(this.title)
                 .description(this.description)
                 .pdfUrl(this.pdfUrl)
+                .pdfFileName(this.pdfFileName)
                 .creationDate(this.creationDate)
-                // Convertir el módulo de dominio a entidad; solo se mapea el id en este ejemplo.
-                .moduleId(ModuleEntity.builder().id(this.module.getModuleId()).build())
+                // Convertir el módulo de dominio a entidad;
+                .moduleId(ModuleEntity.builder().id(this.moduleId.getModuleId()).build())
                 .build();
     }
 }
