@@ -5,6 +5,7 @@ import com.germogli.backend.education.module.infrastructure.entity.ModuleEntity;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -26,8 +27,9 @@ public class ModuleDomain implements Converter<ModuleDomain, ModuleEntity> {
     private Integer moduleId;
     private String title;
     private String description;
-    @Builder.Default
     private LocalDateTime creationDate = LocalDateTime.now();
+    // Usar @Builder.Default para inicializar tags
+    @Builder.Default
     private Set<TagDomain> tags = new HashSet<>();
 
     /**
@@ -38,6 +40,23 @@ public class ModuleDomain implements Converter<ModuleDomain, ModuleEntity> {
      */
     @Override
     public ModuleDomain fromEntity(ModuleEntity entity) {
+        return ModuleDomain.builder()
+                .moduleId(entity.getId())
+                .title(entity.getTitle())
+                .description(entity.getDescription())
+                .creationDate(entity.getCreationDate())
+                .tags(TagDomain.fromEntities(entity.getTags()))
+                .build();
+    }
+
+    /**
+     * Método estático que convierte una entidad de tipo ModuleEntity en un objeto de dominio ModuleDomain.
+     * Este método permite usar la referencia de método, por ejemplo, ModuleDomain::fromEntityStatic.
+     *
+     * @param entity La entidad ModuleEntity que se desea convertir.
+     * @return Una instancia de ModuleDomain con los datos mapeados desde la entidad.
+     */
+    public static ModuleDomain fromEntityStatic(ModuleEntity entity) {
         return ModuleDomain.builder()
                 .moduleId(entity.getId())
                 .title(entity.getTitle())

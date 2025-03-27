@@ -53,6 +53,28 @@ public class TagRepository implements TagDomainRepository {
     }
 
     @Override
+    public TagDomain getById(Integer tagId) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_tag_by_id", TagEntity.class);
+            query.registerStoredProcedureParameter("p_tag_id", Integer.class, ParameterMode.IN);
+            query.setParameter("p_tag_id", tagId);
+            query.execute();
+
+            // Se espera que el SP devuelva una única fila
+            List<TagEntity> resultList = query.getResultList();
+            if (resultList.isEmpty()) {
+                return null;
+            }
+
+            // Tomamos el primer (y único) resultado y lo convertimos a TagDomain
+            TagEntity entity = resultList.get(0);
+            return TagDomain.fromEntity(entity);
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al buscar la etiqueta con id: " + tagId);
+        }
+    }
+
+    @Override
     public TagDomain getByName(String tagName) {
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_tag_by_name", TagEntity.class);
@@ -122,7 +144,7 @@ public class TagRepository implements TagDomainRepository {
     }
 
     @Override
-    public Integer getOrCreateTagId(String tagName) {
+    public Integer getOrCreateTag(String tagName) {
         // Crea la consulta para el procedimiento almacenado sp_get_or_create_tag
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_or_create_tag");
 

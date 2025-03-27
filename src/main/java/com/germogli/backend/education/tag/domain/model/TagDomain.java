@@ -10,6 +10,7 @@ import lombok.Data;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Modelo de dominio para una etiqueta.
@@ -39,11 +40,12 @@ public class TagDomain {
 
     // Convierte una lista de entidades TagEntity a una lista de objetos TagDomain
     public static Set<TagDomain> fromEntities(Set<TagEntity> entities) {
-        Set<TagDomain> tagDomains = new HashSet<>();
-        for (TagEntity entity : entities) {
-            tagDomains.add(fromEntity(entity));
-        }
-        return tagDomains;
+        return entities.stream()
+                .map(entity -> TagDomain.builder()
+                        .tagId(entity.getId())
+                        .tagName(entity.getName())
+                        .build())
+                .collect(Collectors.toSet());
     }
 
     // Convierte una lista de objetos TagDomain a una lista de entidades TagEntity

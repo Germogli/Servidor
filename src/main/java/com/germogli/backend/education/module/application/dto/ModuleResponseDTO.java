@@ -1,12 +1,12 @@
 package com.germogli.backend.education.module.application.dto;
 
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
+import com.germogli.backend.education.tag.application.dto.TagResponseDTO;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -18,7 +18,7 @@ public class ModuleResponseDTO {
     private String title;
     private String description;
     private LocalDateTime creationDate;
-    private Set<String> tagNames = new HashSet<>();  // Cambiar a Set<String>
+    private Set<TagResponseDTO> tags;  // Usamos Set<TagResponseDTO> para las etiquetas
 
     /**
      * Método para convertir un objeto ModuleDomain a ModuleResponseDTO.
@@ -32,8 +32,8 @@ public class ModuleResponseDTO {
                 .title(domain.getTitle())
                 .description(domain.getDescription())
                 .creationDate(domain.getCreationDate())
-                .tagNames(domain.getTags().stream()
-                        .map(TagDomain::getTagName)  // Aquí mapeamos a los nombres de las etiquetas
+                .tags(domain.getTags().stream()
+                        .map(tag -> TagResponseDTO.fromDomain(tag))  // Aquí mapeamos a objetos TagResponseDTO
                         .collect(Collectors.toSet()))  // Usamos Set para evitar duplicados
                 .build();
     }
@@ -42,11 +42,8 @@ public class ModuleResponseDTO {
      * Convierte este DTO a un objeto ModuleDomain.
      */
     public ModuleDomain toDomain() {
-        // Convertir los nombres de etiquetas a objetos TagDomain
-        Set<TagDomain> tags = this.tagNames.stream()
-                .map(tagName -> TagDomain.builder()
-                        .tagName(tagName)  // Aquí estamos creando objetos TagDomain usando el nombre
-                        .build())
+        Set<TagDomain> tags = this.tags.stream()
+                .map(tagDTO -> tagDTO.toDomain())  // Convertimos TagResponseDTO a TagDomain
                 .collect(Collectors.toSet());
 
         return ModuleDomain.builder()
@@ -54,7 +51,7 @@ public class ModuleResponseDTO {
                 .title(this.title)
                 .description(this.description)
                 .creationDate(this.creationDate)
-                .tags(tags)
+                .tags(tags)  // Asignamos los tags convertidos
                 .build();
     }
 

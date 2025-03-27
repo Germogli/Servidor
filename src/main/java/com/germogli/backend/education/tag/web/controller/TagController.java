@@ -43,10 +43,29 @@ public class TagController {
      * Endpoint para obtener una etiqueta por su nombre.
      * Busca la etiqueta en el servicio y la mapea a DTO para la respuesta.
      *
+     * @param tagId id de la etiqueta a buscar.
+     * @return ApiResponseDTO con el TagResponseDTO encontrado.
+     */
+    @GetMapping("/getTagId/{tagId}")
+    public ResponseEntity<ApiResponseDTO<TagResponseDTO>> getTagById(@PathVariable Integer tagId) {
+        TagDomain tagDomain = tagDomainService.getTagById(tagId);
+        // Mapear el objeto de dominio a DTO
+        TagResponseDTO tagResponse = tagDomainService.toResponse(tagDomain);
+        // Retornar la respuesta con el DTO mapeado
+        return ResponseEntity.ok(ApiResponseDTO.<TagResponseDTO>builder()
+                .message("Etiqueta encontrada correctamente")
+                .data(tagResponse)
+                .build());
+    }
+
+    /**
+     * Endpoint para obtener una etiqueta por su nombre.
+     * Busca la etiqueta en el servicio y la mapea a DTO para la respuesta.
+     *
      * @param tagName el nombre de la etiqueta a buscar.
      * @return ApiResponseDTO con el TagResponseDTO encontrado.
      */
-    @GetMapping("/{tagName}")
+    @GetMapping("/getTagName/{tagName}")
     public ResponseEntity<ApiResponseDTO<TagResponseDTO>> getTagByName(@PathVariable String tagName) {
         TagDomain tagDomain = tagDomainService.getTagByName(tagName);
         // Mapear el objeto de dominio a DTO
