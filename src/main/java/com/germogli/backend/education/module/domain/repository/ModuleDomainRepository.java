@@ -11,4 +11,5 @@ public interface ModuleDomainRepository {
     ModuleDomain updateModuleWithTags(ModuleDomain moduleDomain);
     Optional<ModuleDomain> getById(Integer moduleId);
     List<ModuleDomain> filterModulesByTags(List<Integer> tagIds);
+    void deleteModule(Integer moduleId);
 }

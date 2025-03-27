@@ -158,6 +158,28 @@ public class ModuleDomainService {
         return filteredModules;
     }
 
+    /**
+     * Elimina un módulo por su ID.
+     *
+     * @param moduleId ID del módulo a eliminar.
+     * @throws ResourceNotFoundException si el módulo no existe.
+     * @throws AccessDeniedException si el usuario no tiene permisos de administrador.
+     */
+    public void deleteModule(Integer moduleId) {
+        // Verificar que el módulo existe
+        ModuleDomain existingModule = moduleDomainRepository.getById(moduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Módulo no encontrado con ID: " + moduleId));
+
+        // Verificar permisos de administrador
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para eliminar módulos.");
+        }
+
+        // Eliminar el módulo
+        moduleDomainRepository.deleteModule(moduleId);
+    }
+
     // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
     public List<ModuleResponseDTO> toResponseList(List<ModuleDomain> moduleDomains) {
         return ModuleResponseDTO.fromDomains(moduleDomains);

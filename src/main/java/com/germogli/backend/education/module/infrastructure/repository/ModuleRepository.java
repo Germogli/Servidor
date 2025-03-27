@@ -156,4 +156,13 @@ public class ModuleRepository implements ModuleDomainRepository {
 
         return new ArrayList<>(moduleMap.values());
     }
+
+    @Override
+    public void deleteModule(Integer moduleId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_module");
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_module_id", moduleId);
+
+        query.execute();
+    }
 }

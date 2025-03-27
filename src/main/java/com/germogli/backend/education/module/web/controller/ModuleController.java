@@ -80,4 +80,19 @@ public class ModuleController {
                 .build());
     }
 
+    /**
+     * Elimina un módulo por su ID.
+     *
+     * @param moduleId ID del módulo a eliminar.
+     * @return Respuesta con mensaje de éxito.
+     */
+    @DeleteMapping("/{moduleId}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteModule(@PathVariable Integer moduleId) {
+        moduleDomainService.deleteModule(moduleId);
+
+        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
+                .message("Módulo eliminado correctamente")
+                .build());
+    }
+
 }
