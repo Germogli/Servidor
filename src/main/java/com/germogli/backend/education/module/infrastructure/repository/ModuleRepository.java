@@ -55,4 +55,35 @@ public class ModuleRepository implements ModuleDomainRepository {
         List<ModuleEntity> resultList = query.getResultList();
         return resultList.stream().map(ModuleDomain::fromEntityStatic).collect(Collectors.toList());
     }
+
+    @Override
+    public ModuleDomain updateModuleWithTags(ModuleDomain moduleDomain) {
+        // Convertir el conjunto de etiquetas a una cadena de IDs separados por comas
+        String tagIds = moduleDomain.getTags()
+                .stream()
+                .map(TagDomain::getTagId)  // Obtener los IDs de las etiquetas
+                .map(String::valueOf)      // Convertirlos a String
+                .collect(Collectors.joining(",")); // Unirlos con comas
+
+        // Crear la consulta para llamar al procedimiento almacenado
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_module_with_tags");
+
+        // Registrar parámetros del SP
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_title", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_description", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_tag_ids", String.class, ParameterMode.IN);
+
+        // Asignar valores a los parámetros
+        query.setParameter("p_module_id", moduleDomain.getModuleId());
+        query.setParameter("p_title", moduleDomain.getTitle());
+        query.setParameter("p_description", moduleDomain.getDescription());
+        query.setParameter("p_tag_ids", tagIds);  // Pasar los IDs en lugar de nombres
+
+        // Ejecutar el SP
+        query.execute();
+
+        return moduleDomain; // Retornar el módulo actualizado
+    }
+
 }

@@ -5,6 +5,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.module.application.dto.CreateModuleResponseDTO;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.application.dto.ModuleResponseDTO;
+import com.germogli.backend.education.module.application.dto.UpdateModuleRequestDTO;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.domain.repository.ModuleDomainRepository;
 import com.germogli.backend.education.tag.application.dto.TagResponseDTO;
@@ -84,6 +85,52 @@ public class ModuleDomainService {
 
         return moduleDomainRepository.createModuleWithTags(module);
     }
+
+    /**
+     * Actualiza un módulo existente.
+     *
+     * @param moduleId ID del módulo a actualizar.
+     * @param dto DTO con los nuevos datos del módulo.
+     * @return El módulo actualizado.
+     */
+    public ModuleDomain updateModule(Integer moduleId, UpdateModuleRequestDTO dto) {
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+
+        // Verificar permisos de administrador
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para actualizar módulos.");
+        }
+
+//        // Verificar que el módulo existe
+//        ModuleDomain existingModule = moduleDomainRepository.getById(moduleId);
+//        if (existingModule == null) {
+//            throw new ResourceNotFoundException("Módulo no encontrado con ID: " + moduleId);
+//        }
+
+        // Verificar que todos los tags existen
+        Set<TagDomain> tags = dto.getTagIds().stream()
+                .map(tagId -> {
+                    TagDomain tag = tagDomainRepository.getById(tagId);
+                    if (tag == null) {
+                        throw new ResourceNotFoundException("Tag no encontrado con ID: " + tagId);
+                    }
+                    return tag;
+                })
+                .collect(Collectors.toSet());
+
+        // Crear objeto actualizado del módulo
+        ModuleDomain updatedModule = ModuleDomain.builder()
+                .moduleId(moduleId)
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .tags(tags)
+//                .creationDate(existingModule.getCreationDate()) // Mantener la fecha original
+                .build();
+
+        // Llamar al repositorio para ejecutar el SP
+        return moduleDomainRepository.updateModuleWithTags(updatedModule);
+    }
+
 
     // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
     public List<ModuleResponseDTO> toResponseList(List<ModuleDomain> moduleDomains) {

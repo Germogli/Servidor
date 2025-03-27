@@ -3,6 +3,7 @@ package com.germogli.backend.education.module.web.controller;
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
 import com.germogli.backend.education.module.application.dto.CreateModuleResponseDTO;
 import com.germogli.backend.education.module.application.dto.ModuleResponseDTO;
+import com.germogli.backend.education.module.application.dto.UpdateModuleRequestDTO;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import lombok.RequiredArgsConstructor;
@@ -38,5 +39,18 @@ public class ModuleController {
                 .data(moduleDomainService.toResponse(module))
                 .build());
     }
+
+    @PutMapping("/{moduleId}")
+    public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> updateModule(
+            @PathVariable Integer moduleId,
+            @RequestBody UpdateModuleRequestDTO moduleDTO)
+    {
+        ModuleDomain updatedModule = moduleDomainService.updateModule(moduleId, moduleDTO);
+        return ResponseEntity.ok(ApiResponseDTO.<ModuleResponseDTO>builder()
+                .message("Módulo actualizado correctamente")
+                .data(moduleDomainService.toResponse(updatedModule))
+                .build());
+    }
+
 
 }

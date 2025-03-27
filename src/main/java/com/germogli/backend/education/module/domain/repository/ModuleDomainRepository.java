@@ -7,4 +7,5 @@ import java.util.List;
 public interface ModuleDomainRepository {
     ModuleDomain createModuleWithTags(ModuleDomain moduleDomain);
     List<ModuleDomain> getAll();
+    ModuleDomain updateModuleWithTags(ModuleDomain moduleDomain);
 }
