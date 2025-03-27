@@ -16,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors; // Importar Collectors
 
@@ -100,11 +101,9 @@ public class ModuleDomainService {
             throw new AccessDeniedException("El usuario no tiene permisos para actualizar módulos.");
         }
 
-//        // Verificar que el módulo existe
-//        ModuleDomain existingModule = moduleDomainRepository.getById(moduleId);
-//        if (existingModule == null) {
-//            throw new ResourceNotFoundException("Módulo no encontrado con ID: " + moduleId);
-//        }
+        // Verificar que el módulo existe
+        ModuleDomain existingModule = moduleDomainRepository.getById(moduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Módulo no encontrado con ID: " + moduleId));
 
         // Verificar que todos los tags existen
         Set<TagDomain> tags = dto.getTagIds().stream()
@@ -123,7 +122,7 @@ public class ModuleDomainService {
                 .title(dto.getTitle())
                 .description(dto.getDescription())
                 .tags(tags)
-//                .creationDate(existingModule.getCreationDate()) // Mantener la fecha original
+                .creationDate(existingModule.getCreationDate()) // Mantener la fecha original
                 .build();
 
         // Llamar al repositorio para ejecutar el SP
