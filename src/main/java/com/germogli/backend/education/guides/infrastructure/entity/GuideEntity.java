@@ -38,5 +38,5 @@ public class GuideEntity {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "module_id", nullable = false)
-    private ModuleEntity module;
+    private ModuleEntity moduleId;
 }
