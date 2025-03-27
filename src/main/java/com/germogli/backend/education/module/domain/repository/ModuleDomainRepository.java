@@ -10,4 +10,5 @@ public interface ModuleDomainRepository {
     List<ModuleDomain> getAll();
     ModuleDomain updateModuleWithTags(ModuleDomain moduleDomain);
     Optional<ModuleDomain> getById(Integer moduleId);
+    List<ModuleDomain> filterModulesByTags(List<Integer> tagIds);
 }

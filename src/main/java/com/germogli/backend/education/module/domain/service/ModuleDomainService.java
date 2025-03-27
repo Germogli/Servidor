@@ -141,6 +141,23 @@ public class ModuleDomainService {
                 .orElseThrow(() -> new ResourceNotFoundException("Modulo no encontrado con id: " + id));
     }
 
+    /**
+     * Filtra los módulos por las etiquetas proporcionadas.
+     *
+     * @param tagIds Lista de IDs de etiquetas.
+     * @return Lista de módulos que coinciden con las etiquetas proporcionadas.
+     * @throws ResourceNotFoundException si no se encuentran módulos con las etiquetas proporcionadas.
+     */
+    public List<ModuleDomain> filterModulesByTags(List<Integer> tagIds) {
+        List<ModuleDomain> filteredModules = moduleDomainRepository.filterModulesByTags(tagIds);
+
+        if (filteredModules.isEmpty()) {
+            throw new ResourceNotFoundException("No se encontraron módulos con las etiquetas proporcionadas.");
+        }
+
+        return filteredModules;
+    }
+
     // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
     public List<ModuleResponseDTO> toResponseList(List<ModuleDomain> moduleDomains) {
         return ModuleResponseDTO.fromDomains(moduleDomains);
@@ -169,6 +186,4 @@ public class ModuleDomainService {
                 .tags(tagResponses)
                 .build();
     }
-
-
 }

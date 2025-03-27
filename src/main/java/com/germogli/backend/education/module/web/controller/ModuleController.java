@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Controlador REST para gestionar los módulos en el módulo Education.
@@ -58,6 +59,24 @@ public class ModuleController {
         return ResponseEntity.ok(ApiResponseDTO.<ModuleResponseDTO>builder()
                 .message("Módulo encontrado correctamente")
                 .data(moduleDomainService.toResponse(module))
+                .build());
+    }
+
+    /**
+     * Obtiene los módulos asociados a una o más etiquetas.
+     *
+     * @param tagIds Lista de IDs de etiquetas.
+     * @return Lista de módulos encontrados.
+     */
+    @GetMapping("/filter")
+    public ResponseEntity<ApiResponseDTO<List<ModuleResponseDTO>>> getModulesByTags(@RequestParam List<Integer> tagIds) {
+        List<ModuleDomain> modules = moduleDomainService.filterModulesByTags(tagIds);
+
+        return ResponseEntity.ok(ApiResponseDTO.<List<ModuleResponseDTO>>builder()
+                .message("Módulos encontrados.")
+                .data(modules.stream()
+                        .map(moduleDomainService::toResponse)
+                        .collect(Collectors.toList()))
                 .build());
     }
 

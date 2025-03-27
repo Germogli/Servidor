@@ -11,8 +11,9 @@ import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository("educationModuleRepository")
@@ -101,4 +102,58 @@ public class ModuleRepository implements ModuleDomainRepository {
         return Optional.of(ModuleDomain.fromEntityStatic(resultList.get(0)));
     }
 
+    @Override
+    public List<ModuleDomain> filterModulesByTags(List<Integer> tagIds) {
+        // Convertir la lista de IDs de etiquetas a una cadena separada por comas
+        String tagIdsStr = tagIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
+        // Crear la consulta al procedimiento almacenado
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_search_modules_by_tags");
+
+        // Registrar el parámetro de entrada
+        query.registerStoredProcedureParameter("p_tag_ids", String.class, ParameterMode.IN);
+
+        // Establecer el parámetro con la cadena de IDs
+        query.setParameter("p_tag_ids", tagIdsStr);
+
+        // Ejecutar la consulta
+        @SuppressWarnings("unchecked")
+        List<Object[]> resultList = query.getResultList();
+
+        // Agrupar los resultados por módulo
+        Map<Integer, ModuleDomain> moduleMap = new HashMap<>();
+
+        for (Object[] result : resultList) {
+            Integer moduleId = (Integer) result[0];
+
+            // Si el módulo aún no está en el mapa, crearlo
+            if (!moduleMap.containsKey(moduleId)) {
+                LocalDateTime creationDate = result[3] instanceof Timestamp
+                        ? ((Timestamp) result[3]).toLocalDateTime()
+                        : null;
+
+                ModuleDomain module = ModuleDomain.builder()
+                        .moduleId(moduleId)
+                        .title((String) result[1])
+                        .description((String) result[2])
+                        .creationDate(creationDate)
+                        .tags(new HashSet<>())
+                        .build();
+
+                moduleMap.put(moduleId, module);
+            }
+
+            // Agregar la etiqueta al módulo
+            TagDomain tag = TagDomain.builder()
+                    .tagId((Integer) result[4])
+                    .tagName((String) result[5])
+                    .build();
+
+            moduleMap.get(moduleId).getTags().add(tag);
+        }
+
+        return new ArrayList<>(moduleMap.values());
+    }
 }

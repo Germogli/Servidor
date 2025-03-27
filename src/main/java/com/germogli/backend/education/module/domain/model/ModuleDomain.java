@@ -5,6 +5,7 @@ import com.germogli.backend.education.module.infrastructure.entity.ModuleEntity;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -27,6 +28,8 @@ public class ModuleDomain implements Converter<ModuleDomain, ModuleEntity> {
     private String title;
     private String description;
     private LocalDateTime creationDate = LocalDateTime.now();
+    // Usar @Builder.Default para inicializar tags
+    @Builder.Default
     private Set<TagDomain> tags = new HashSet<>();
 
     /**
