@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ModuleRepository implements ModuleDomainRepository {
     private final EntityManager entityManager;
-    private final TagDomainRepository tagDomainRepository;
 
     /**
      * Crea un nuevo módulo con sus etiquetas asociadas.
