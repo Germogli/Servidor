@@ -52,5 +52,13 @@ public class ModuleController {
                 .build());
     }
 
+    @GetMapping("/{moduleId}")
+    public ResponseEntity<ApiResponseDTO<ModuleResponseDTO>> getModuleById(@PathVariable Integer moduleId) {
+        ModuleDomain module = moduleDomainService.getModuleById(moduleId);
+        return ResponseEntity.ok(ApiResponseDTO.<ModuleResponseDTO>builder()
+                .message("Módulo encontrado correctamente")
+                .data(moduleDomainService.toResponse(module))
+                .build());
+    }
 
 }

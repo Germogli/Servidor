@@ -11,7 +11,6 @@ import com.germogli.backend.education.module.domain.repository.ModuleDomainRepos
 import com.germogli.backend.education.tag.application.dto.TagResponseDTO;
 import com.germogli.backend.education.tag.domain.model.TagDomain;
 import com.germogli.backend.education.tag.domain.repository.TagDomainRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -131,6 +130,17 @@ public class ModuleDomainService {
         return moduleDomainRepository.updateModuleWithTags(updatedModule);
     }
 
+    /**
+     * Obtiene una publicación por su ID.
+     *
+     * @param id Identificador del modulo.
+     * @return modulo encontrado.
+     * @throws ResourceNotFoundException si no se encuentra el post.
+     */
+    public ModuleDomain getModuleById(Integer id) {
+        return moduleDomainRepository.getById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Modulo no encontrado con id: " + id));
+    }
 
     // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
     public List<ModuleResponseDTO> toResponseList(List<ModuleDomain> moduleDomains) {

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Repository("educationModuleRepository")
@@ -84,6 +85,20 @@ public class ModuleRepository implements ModuleDomainRepository {
         query.execute();
 
         return moduleDomain; // Retornar el módulo actualizado
+    }
+
+    @Override
+    public Optional<ModuleDomain> getById(Integer moduleId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_module_by_id", ModuleEntity.class);
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_module_id", moduleId);
+        query.execute();
+        List<ModuleEntity> resultList = query.getResultList();
+        if (resultList.isEmpty()) {
+            return Optional.empty();
+        }
+        // Usamos el método estático para convertir la entidad al dominio
+        return Optional.of(ModuleDomain.fromEntityStatic(resultList.get(0)));
     }
 
 }
