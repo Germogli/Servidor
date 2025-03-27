@@ -28,6 +28,7 @@ public class GuideEntity {
     @Column(nullable = false)
     private String title;
 
+    @Column(name = "description")
     private String description;
 
     @Column(nullable = false, name = "pdf_url")

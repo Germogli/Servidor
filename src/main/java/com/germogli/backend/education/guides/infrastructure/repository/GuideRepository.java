@@ -2,11 +2,16 @@ package com.germogli.backend.education.guides.infrastructure.repository;
 
 import com.germogli.backend.education.guides.domain.model.GuideDomain;
 import com.germogli.backend.education.guides.domain.repository.GuideDomainRepository;
+import com.germogli.backend.education.guides.infrastructure.entity.GuideEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Repositorio para gestionar operaciones de guías utilizando procedimientos almacenados.
@@ -53,4 +58,17 @@ public class GuideRepository implements GuideDomainRepository {
         // Retornar la guía con el ID generado
         return guideDomain;
     }
+
+    @Override
+    public List<GuideDomain> getAll() {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_guides", GuideEntity.class);
+
+        query.execute();
+
+        List<GuideEntity> resultList = query.getResultList();
+        return resultList.stream().map(GuideDomain::fromEntityStatic).collect(Collectors.toList());
+    }
+
+
+
 }

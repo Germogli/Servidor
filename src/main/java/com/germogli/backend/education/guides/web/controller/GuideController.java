@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Controlador REST para gestionar las guías en el módulo Education.
  */
@@ -19,6 +21,22 @@ import org.springframework.web.bind.annotation.*;
 public class GuideController {
 
     private final GuideDomainService guideDomainService;
+
+    /**
+     * Obtiene todas las guías disponibles.
+     *
+     * @return ResponseEntity con la lista de guías en un ApiResponseDTO.
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponseDTO<List<GuideResponseDTO>>> getAllGuides() {
+        List<GuideResponseDTO> guides = guideDomainService.toResponseList(guideDomainService.getAllGuides());
+        return ResponseEntity.ok(
+                ApiResponseDTO.<List<GuideResponseDTO>>builder()
+                        .message("Guías recuperadas correctamente")
+                        .data(guides)
+                        .build()
+        );
+    }
 
     /**
      * Método para crear una nueva guía.
@@ -40,4 +58,6 @@ public class GuideController {
                         .build()
         );
     }
+
+
 }

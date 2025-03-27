@@ -3,8 +3,10 @@ package com.germogli.backend.education.guides.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.azure.service.AzureBlobStorageService;
 import com.germogli.backend.common.exception.CustomForbiddenException;
+import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.guides.application.dto.CreateGuideRequestDTO;
+import com.germogli.backend.education.guides.application.dto.GuideResponseDTO;
 import com.germogli.backend.education.guides.domain.model.GuideDomain;
 import com.germogli.backend.education.guides.domain.repository.GuideDomainRepository;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
@@ -16,6 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -26,6 +30,20 @@ public class GuideDomainService {
     private final ModuleDomainService moduleDomainService; // Servicio para gestionar los módulos educativos
     private final AzureBlobStorageService azureBlobStorageService; // Servicio para interactuar con Azure Blob Storage
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
+
+    /**
+     * Obtiene todas las publicaciones.
+     *
+     * @return Lista de guias.
+     * @throws ResourceNotFoundException si no hay guias disponibles.
+     */
+    public List<GuideDomain> getAllGuides() {
+        List<GuideDomain> guides = guideDomainRepository.getAll();
+        if (guides.isEmpty()) {
+            throw new ResourceNotFoundException("No hay guias disponibles.");
+        }
+        return guides;
+    }
 
     // Método para crear una nueva guía educativa
     public GuideDomain createGuide(CreateGuideRequestDTO dto) {
@@ -86,5 +104,34 @@ public class GuideDomainService {
 
         // Retornar la URL pública del archivo subido a Azure
         return "https://germoglistorage.blob.core.windows.net/pdfs-educativos/" + fileName;
+    }
+
+    /**
+     * Convierte una lista de entidades de dominio a DTOs de respuesta.
+     *
+     * @param guides Lista de guías de dominio
+     * @return Lista de DTOs de respuesta
+     */
+    public List<GuideResponseDTO> toResponseList(List<GuideDomain> guides) {
+        return guides.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convierte una entidad de dominio a un DTO de respuesta.
+     *
+     * @param guide Guía de dominio
+     * @return DTO de respuesta
+     */
+    private GuideResponseDTO toResponseDTO(GuideDomain guide) {
+        return GuideResponseDTO.builder()
+                .guideId(guide.getGuideId())
+                .moduleId(guide.getModuleId() != null ? guide.getModuleId().getModuleId() : null)
+                .title(guide.getTitle())
+                .description(guide.getDescription())
+                .pdfUrl(guide.getPdfUrl())
+                .creationDate(guide.getCreationDate())
+                .build();
     }
 }
