@@ -32,45 +32,43 @@ public class GuideDomainService {
     private final AzureBlobStorageService azureBlobStorageService; // Servicio para interactuar con Azure Blob Storage
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
 
-//    /**
-//     * Actualiza los datos de una guía educativa en la base de datos.
-//     *
-//     * @param dto El objeto UpdateGuideRequest con la nueva información de la guía.
-//     * @return El objeto GuideDomain actualizado.
-//     */
-//    public GuideDomain updateGuide(Integer guideId, UpdateGuideRequestDTO dto) {
-//        // Obtener el usuario autenticado
-//        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
-//
-//        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
-//        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
-//            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
-//        }
-//
-//        // Verificar que la guía existe antes de intentar actualizarla
-////        GuideDomain existingGuide = guideDomainRepository.getById(guideId);
-////        if (existingGuide == null) {
-////            throw new ResourceNotFoundException("Guía no encontrada.");
-////        }
-//
-//        // Verificar si el módulo existe antes de actualizar
-//        if (dto.getModuleId() != null) {
-//            moduleDomainService.getModuleById(dto.getModuleId());
-//        }
-//
-//        // Crear el objeto GuideDomain a partir del DTO de forma explícita
-//        GuideDomain guideDomain = GuideDomain.builder()
-//                .guideId(guideId)  // Establecer el ID de la guía
-//                .moduleId(ModuleDomain.builder()
-//                        .moduleId(dto.getModuleId())  // Establecer el módulo asociado a la guía
-//                        .build())
-//                .title(dto.getTitle())  // Establecer el título de la guía
-//                .description(dto.getDescription())  // Establecer la descripción de la guía
-//                .build();
-//
-//        // Llamar al repositorio para realizar la actualización
-//        return guideDomainRepository.updateGuideInfo(guideDomain);
-//    }
+    /**
+     * Actualiza los datos de una guía educativa en la base de datos.
+     *
+     * @param dto El objeto UpdateGuideRequest con la nueva información de la guía.
+     * @return El objeto GuideDomain actualizado.
+     */
+    public GuideDomain updateGuide(Integer guideId, UpdateGuideRequestDTO dto) {
+        // Obtener el usuario autenticado
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+
+        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
+        }
+
+        // Verificar que la guía existe; si no, lanzar una excepción
+        GuideDomain existingGuide = guideDomainRepository.getById(guideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Guía no encontrada con id " + guideId));
+
+        // Verificar si el módulo existe antes de actualizar
+        if (dto.getModuleId() != null) {
+            moduleDomainService.getModuleById(dto.getModuleId());
+        }
+
+        // Crear el objeto GuideDomain a partir del DTO de forma explícita
+        GuideDomain guideDomain = GuideDomain.builder()
+                .guideId(guideId)  // Establecer el ID de la guía
+                .moduleId(ModuleDomain.builder()
+                        .moduleId(dto.getModuleId())  // Establecer el módulo asociado a la guía
+                        .build())
+                .title(dto.getTitle())  // Establecer el título de la guía
+                .description(dto.getDescription())  // Establecer la descripción de la guía
+                .build();
+
+        // Llamar al repositorio para realizar la actualización
+        return guideDomainRepository.updateGuideInfo(guideDomain);
+    }
 
     /**
      * Obtiene todas las publicaciones.

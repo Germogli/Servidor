@@ -23,27 +23,26 @@ public class GuideController {
 
     private final GuideDomainService guideDomainService;
 
-//    /**
-//     * Método para actualizar los datos de una guía.
-//     * Recibe una solicitud HTTP PUT con los datos necesarios para actualizar la guía.
-//     *
-//     * @param guideDTO Objeto que contiene los datos para actualizar la guía (título, descripción, etc.)
-//     * @return ResponseEntity con el resultado de la actualización de la guía, incluyendo un mensaje y los detalles de la guía actualizada.
-//     */
-//    @PutMapping("/{id}")
-//    public ResponseEntity<ApiResponseDTO<GuideResponseDTO>> updateGuideInfo(
-//            @PathVariable Integer id,
-//            @RequestBody UpdateGuideRequestDTO guideDTO
-//    ) {
-//        GuideDomain updatedGuide = guideDomainService.updateGuide(id, guideDTO);
-//        return ResponseEntity.ok(
-//                ApiResponseDTO.<GuideResponseDTO>builder()
-//                        .message("Guia actualizada correctamente")
-//                        .data(guideDomainService.toResponse(updatedGuide))
-//                        .build()
-//        );
-//    }
-
+    /**
+     * Método para actualizar los datos de una guía.
+     * Recibe una solicitud HTTP PUT con los datos necesarios para actualizar la guía.
+     *
+     * @param guideDTO Objeto que contiene los datos para actualizar la guía (título, descripción, etc.)
+     * @return ResponseEntity con el resultado de la actualización de la guía, incluyendo un mensaje y los detalles de la guía actualizada.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<GuideResponseDTO>> updateGuideInfo(
+            @PathVariable Integer id,
+            @RequestBody UpdateGuideRequestDTO guideDTO
+    ) {
+        GuideDomain updatedGuide = guideDomainService.updateGuide(id, guideDTO);
+        return ResponseEntity.ok(
+                ApiResponseDTO.<GuideResponseDTO>builder()
+                        .message("Guia actualizada correctamente")
+                        .data(guideDomainService.toResponse(updatedGuide))
+                        .build()
+        );
+    }
 
     /**
      * Obtiene todas las guías disponibles.
@@ -115,6 +114,4 @@ public class GuideController {
                         .build()
         );
     }
-
-
 }
