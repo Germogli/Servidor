@@ -8,8 +8,6 @@ import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,13 +60,10 @@ public class GuideRepository implements GuideDomainRepository {
     @Override
     public List<GuideDomain> getAll() {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_guides", GuideEntity.class);
-
         query.execute();
 
         List<GuideEntity> resultList = query.getResultList();
         return resultList.stream().map(GuideDomain::fromEntityStatic).collect(Collectors.toList());
     }
-
-
 
 }

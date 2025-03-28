@@ -109,12 +109,24 @@ public class GuideDomainService {
     /**
      * Convierte una lista de entidades de dominio a DTOs de respuesta.
      *
-     * @param guides Lista de guías de dominio
-     * @return Lista de DTOs de respuesta
+     * @param domains Lista de objetos GuideDomain que representan las guías en la capa de dominio.
+     * @return Lista de objetos GuideResponseDTO con los datos formateados para la respuesta al cliente.
      */
-    public List<GuideResponseDTO> toResponseList(List<GuideDomain> guides) {
-        return guides.stream()
-                .map(this::toResponseDTO)
+    public List<GuideResponseDTO> toResponseList(List<GuideDomain> domains) {
+        return domains.stream()
+                .map(domain -> {
+                    GuideResponseDTO dto = new GuideResponseDTO();
+                    dto.setGuideId(domain.getGuideId());
+                    dto.setTitle(domain.getTitle());
+                    dto.setDescription(domain.getDescription());
+                    dto.setPdfUrl(domain.getPdfUrl());
+                    dto.setPdfFileName(domain.getPdfFileName());  // Copia explícita del nombre del archivo
+                    dto.setCreationDate(domain.getCreationDate());
+                    dto.setModuleId(domain.getModuleId() != null ? domain.getModuleId().getModuleId() : null);
+
+                    // Devuelve el DTO convertido para el mapeo
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
