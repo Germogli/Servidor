@@ -77,44 +77,6 @@ public class AzureBlobStorageService {
     }
 
     /**
-     * Descarga un archivo de Azure Blob Storage.
-     *
-     * @param containerName Nombre del contenedor donde está almacenado el archivo.
-     * @param blobName Nombre del archivo a descargar.
-     * @return Un array de bytes que representa el contenido del archivo.
-     */
-    public byte[] downloadFile(String containerName, String blobName) {
-        // Obtiene el contenedor
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
-        // Obtiene una referencia al blob
-        BlobClient blobClient = containerClient.getBlobClient(blobName);
-        // Usa un flujo de salida para almacenar los datos descargados
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        // Descarga el archivo
-        blobClient.download(outputStream);
-        // Retorna los datos en un array de bytes
-        return outputStream.toByteArray();
-    }
-
-    /**
-     * Lista todos los archivos (blobs) dentro de un contenedor.
-     *
-     * @param containerName Nombre del contenedor.
-     * @return Lista de nombres de los archivos dentro del contenedor.
-     */
-    public List<String> listBlobs(String containerName) {
-        // Obtiene el contenedor
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
-        // Crea una lista para almacenar los nombres de los blobs
-        List<String> blobNames = new ArrayList<>();
-        // Recorre cada blob dentro del contenedor y agrega su nombre a la lista
-        for (BlobItem blobItem : containerClient.listBlobs()) {
-            blobNames.add(blobItem.getName());
-        }
-        return blobNames;
-    }
-
-    /**
      * Elimina un archivo (blob) de un contenedor en Azure Blob Storage.
      *
      * @param containerName Nombre del contenedor.
