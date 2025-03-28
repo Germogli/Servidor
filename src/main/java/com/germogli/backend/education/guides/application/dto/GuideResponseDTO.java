@@ -45,21 +45,4 @@ public class GuideResponseDTO {
                 .moduleId(domain.getModuleId() != null ? domain.getModuleId().getModuleId() : null)
                 .build();
     }
-
-    /**
-     * Convierte este DTO en un objeto de dominio GuideDomain.
-     *
-     * @return Objeto GuideDomain con los datos del DTO.
-     */
-    public GuideDomain toDomain() {
-        return GuideDomain.builder()
-                .guideId(this.guideId)
-                .title(this.title)
-                .description(this.description)
-                .pdfUrl(this.pdfUrl)
-                .pdfFileName(this.pdfFileName)
-                .creationDate(this.creationDate)
-                .moduleId(ModuleDomain.builder().moduleId(this.moduleId).build())
-                .build();
-    }
 }
