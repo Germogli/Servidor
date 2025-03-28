@@ -7,6 +7,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.guides.application.dto.CreateGuideRequestDTO;
 import com.germogli.backend.education.guides.application.dto.GuideResponseDTO;
+import com.germogli.backend.education.guides.application.dto.UpdateGuideRequestDTO;
 import com.germogli.backend.education.guides.domain.model.GuideDomain;
 import com.germogli.backend.education.guides.domain.repository.GuideDomainRepository;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
@@ -32,6 +33,63 @@ public class GuideDomainService {
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
 
     /**
+     * Elimina una guía educativa: primero elimina el archivo en Azure Blob Storage y luego la guía en la base de datos.
+     *
+     * @param guideId ID de la guía a eliminar.
+     */
+    public void deleteGuide(Integer guideId) {
+        // Obtener la guía; si no existe, se lanzará ResourceNotFoundException
+        GuideDomain guide = getGuideById(guideId);
+
+        // Extraer el nombre del archivo (blob) desde la URL o directamente desde el campo pdfFileName
+        String blobName = guide.getPdfFileName();
+
+        // Eliminar el archivo (blob) del contenedor "pdfs-educativos" en Azure
+        azureBlobStorageService.deleteBlob("pdfs-educativos", blobName);
+
+        // Llamar al repositorio para eliminar la guía en la base de datos
+        guideDomainRepository.deleteGuide(guideId);
+    }
+
+    /**
+     * Actualiza los datos de una guía educativa en la base de datos.
+     *
+     * @param dto El objeto UpdateGuideRequest con la nueva información de la guía.
+     * @return El objeto GuideDomain actualizado.
+     */
+    public GuideDomain updateGuide(Integer guideId, UpdateGuideRequestDTO dto) {
+        // Obtener el usuario autenticado
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+
+        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
+        }
+
+        // Verificar que la guía existe; si no, lanzar una excepción
+        GuideDomain existingGuide = guideDomainRepository.getById(guideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Guía no encontrada con id " + guideId));
+
+        // Verificar si el módulo existe antes de actualizar
+        if (dto.getModuleId() != null) {
+            moduleDomainService.getModuleById(dto.getModuleId());
+        }
+
+        // Crear el objeto GuideDomain a partir del DTO de forma explícita
+        GuideDomain guideDomain = GuideDomain.builder()
+                .guideId(guideId)  // Establecer el ID de la guía
+                .moduleId(ModuleDomain.builder()
+                        .moduleId(dto.getModuleId())  // Establecer el módulo asociado a la guía
+                        .build())
+                .title(dto.getTitle())  // Establecer el título de la guía
+                .description(dto.getDescription())  // Establecer la descripción de la guía
+                .build();
+
+        // Llamar al repositorio para realizar la actualización
+        return guideDomainRepository.updateGuideInfo(guideDomain);
+    }
+
+    /**
      * Obtiene todas las publicaciones.
      *
      * @return Lista de guias.
@@ -43,6 +101,33 @@ public class GuideDomainService {
             throw new ResourceNotFoundException("No hay guias disponibles.");
         }
         return guides;
+    }
+
+    /**
+     * Obtiene las guías que pertenecen a un módulo específico, basado en su ID.
+     *
+     * @param moduleId ID del módulo para el cual se desean obtener las guías.
+     * @return Lista de guías asociadas a dicho módulo.
+     * @throws ResourceNotFoundException si no se encuentran guías para el módulo proporcionado.
+     */
+    public List<GuideDomain> getGuidesByModuleId(Integer moduleId) {
+        List<GuideDomain> guides = guideDomainRepository.getByModuleId(moduleId);
+        if (guides.isEmpty()) {
+            throw new ResourceNotFoundException("No hay guias disponibles para este modulo.");
+        }
+        return guides;
+    }
+
+    /**
+     * Obtiene una guía por su ID.
+     *
+     * @param id ID de la guía a buscar.
+     * @return El objeto GuideDomain correspondiente si existe.
+     * @throws ResourceNotFoundException si no se encuentra la guía con el ID proporcionado.
+     */
+    public GuideDomain getGuideById(Integer id) {
+        return guideDomainRepository.getById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Guia no encontrada con id " + id));
     }
 
     // Método para crear una nueva guía educativa
@@ -106,15 +191,46 @@ public class GuideDomainService {
         return "https://germoglistorage.blob.core.windows.net/pdfs-educativos/" + fileName;
     }
 
+    // Método para obtener URL segura con SAS Token
+    public String getSecureGuideUrl(GuideDomain guide) {
+        // Extrae el nombre del archivo de la URL original
+        String fileName = extractFileNameFromUrl(guide.getPdfUrl());
+
+        // Genera token SAS con duración de 150 minutos
+        return azureBlobStorageService.generateSasToken(
+                "pdfs-educativos",
+                fileName,
+                150  // 150 minutos de duración
+        );
+    }
+
+    // Método auxiliar para extraer nombre de archivo desde URL
+    private String extractFileNameFromUrl(String url) {
+        return url.substring(url.lastIndexOf("/") + 1);
+    }
+
     /**
      * Convierte una lista de entidades de dominio a DTOs de respuesta.
      *
-     * @param guides Lista de guías de dominio
-     * @return Lista de DTOs de respuesta
+     * @param domains Lista de objetos GuideDomain que representan las guías en la capa de dominio.
+     * @return Lista de objetos GuideResponseDTO con los datos formateados para la respuesta al cliente.
      */
-    public List<GuideResponseDTO> toResponseList(List<GuideDomain> guides) {
-        return guides.stream()
-                .map(this::toResponseDTO)
+    public List<GuideResponseDTO> toResponseList(List<GuideDomain> domains) {
+        return domains.stream()
+                .map(domain -> {
+                    GuideResponseDTO dto = new GuideResponseDTO();
+                    dto.setGuideId(domain.getGuideId());
+                    dto.setTitle(domain.getTitle());
+                    dto.setDescription(domain.getDescription());
+                    // Generar URL segura con SAS Token
+                    dto.setPdfUrl(getSecureGuideUrl(domain));
+                    dto.setPdfFileName(domain.getPdfFileName());  // Copia explícita del nombre del archivo
+                    dto.setCreationDate(domain.getCreationDate());
+                    dto.setModuleId(domain.getModuleId() != null ? domain.getModuleId().getModuleId() : null);
+
+                    // Devuelve el DTO convertido para el mapeo
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -124,7 +240,7 @@ public class GuideDomainService {
      * @param guide Guía de dominio
      * @return DTO de respuesta
      */
-    private GuideResponseDTO toResponseDTO(GuideDomain guide) {
+    public GuideResponseDTO toResponse(GuideDomain guide) {
         return GuideResponseDTO.builder()
                 .guideId(guide.getGuideId())
                 .moduleId(guide.getModuleId() != null ? guide.getModuleId().getModuleId() : null)

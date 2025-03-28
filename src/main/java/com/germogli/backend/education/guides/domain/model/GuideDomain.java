@@ -39,10 +39,11 @@ public class GuideDomain implements Converter<GuideDomain, GuideEntity> {
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .pdfUrl(entity.getPdfUrl())
-                .pdfFileName(entity.getPdfFileName())
+                .pdfFileName(entity.getPdfFileName())  // Asegúrate de que este método se llame correctamente
                 .creationDate(entity.getCreationDate())
-                // Convertir el módulo a dominio; aquí solo asignamos el id, pero se puede expandir si es necesario
-                .moduleId(ModuleDomain.builder().moduleId(entity.getModuleId().getId()).build())
+                .moduleId(ModuleDomain.builder()
+                        .moduleId(entity.getModuleId() != null ? entity.getModuleId().getId() : null)
+                        .build())
                 .build();
     }
 
