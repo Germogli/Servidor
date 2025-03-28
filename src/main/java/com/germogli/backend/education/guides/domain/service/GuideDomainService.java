@@ -7,6 +7,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.guides.application.dto.CreateGuideRequestDTO;
 import com.germogli.backend.education.guides.application.dto.GuideResponseDTO;
+import com.germogli.backend.education.guides.application.dto.UpdateGuideRequestDTO;
 import com.germogli.backend.education.guides.domain.model.GuideDomain;
 import com.germogli.backend.education.guides.domain.repository.GuideDomainRepository;
 import com.germogli.backend.education.module.domain.model.ModuleDomain;
@@ -30,6 +31,46 @@ public class GuideDomainService {
     private final ModuleDomainService moduleDomainService; // Servicio para gestionar los módulos educativos
     private final AzureBlobStorageService azureBlobStorageService; // Servicio para interactuar con Azure Blob Storage
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
+
+//    /**
+//     * Actualiza los datos de una guía educativa en la base de datos.
+//     *
+//     * @param dto El objeto UpdateGuideRequest con la nueva información de la guía.
+//     * @return El objeto GuideDomain actualizado.
+//     */
+//    public GuideDomain updateGuide(Integer guideId, UpdateGuideRequestDTO dto) {
+//        // Obtener el usuario autenticado
+//        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+//
+//        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
+//        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+//            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
+//        }
+//
+//        // Verificar que la guía existe antes de intentar actualizarla
+////        GuideDomain existingGuide = guideDomainRepository.getById(guideId);
+////        if (existingGuide == null) {
+////            throw new ResourceNotFoundException("Guía no encontrada.");
+////        }
+//
+//        // Verificar si el módulo existe antes de actualizar
+//        if (dto.getModuleId() != null) {
+//            moduleDomainService.getModuleById(dto.getModuleId());
+//        }
+//
+//        // Crear el objeto GuideDomain a partir del DTO de forma explícita
+//        GuideDomain guideDomain = GuideDomain.builder()
+//                .guideId(guideId)  // Establecer el ID de la guía
+//                .moduleId(ModuleDomain.builder()
+//                        .moduleId(dto.getModuleId())  // Establecer el módulo asociado a la guía
+//                        .build())
+//                .title(dto.getTitle())  // Establecer el título de la guía
+//                .description(dto.getDescription())  // Establecer la descripción de la guía
+//                .build();
+//
+//        // Llamar al repositorio para realizar la actualización
+//        return guideDomainRepository.updateGuideInfo(guideDomain);
+//    }
 
     /**
      * Obtiene todas las publicaciones.
@@ -58,6 +99,18 @@ public class GuideDomainService {
             throw new ResourceNotFoundException("No hay guias disponibles para este modulo.");
         }
         return guides;
+    }
+
+    /**
+     * Obtiene una guía por su ID.
+     *
+     * @param id ID de la guía a buscar.
+     * @return El objeto GuideDomain correspondiente si existe.
+     * @throws ResourceNotFoundException si no se encuentra la guía con el ID proporcionado.
+     */
+    public GuideDomain getGuideById(Integer id) {
+        return guideDomainRepository.getById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Guia no encontrada con id " + id));
     }
 
     // Método para crear una nueva guía educativa
@@ -170,7 +223,7 @@ public class GuideDomainService {
      * @param guide Guía de dominio
      * @return DTO de respuesta
      */
-    private GuideResponseDTO toResponseDTO(GuideDomain guide) {
+    public GuideResponseDTO toResponse(GuideDomain guide) {
         return GuideResponseDTO.builder()
                 .guideId(guide.getGuideId())
                 .moduleId(guide.getModuleId() != null ? guide.getModuleId().getModuleId() : null)
