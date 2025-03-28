@@ -7,4 +7,5 @@ import java.util.List;
 public interface GuideDomainRepository {
     GuideDomain createGuide(GuideDomain guideDomain);
     List<GuideDomain> getAll();
+    List<GuideDomain> getByModuleId(Integer moduleId);
 }

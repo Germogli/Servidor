@@ -66,4 +66,15 @@ public class GuideRepository implements GuideDomainRepository {
         return resultList.stream().map(GuideDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
+    @Override
+    public List<GuideDomain> getByModuleId(Integer moduleId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_guides_by_module_id", GuideEntity.class);
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_module_id", moduleId);
+        query.execute();
+
+        List<GuideEntity> resultList = query.getResultList();
+        return resultList.stream().map(GuideDomain::fromEntityStatic).collect(Collectors.toList());
+    }
+
 }

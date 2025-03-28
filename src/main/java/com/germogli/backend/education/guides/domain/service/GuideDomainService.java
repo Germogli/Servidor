@@ -45,6 +45,21 @@ public class GuideDomainService {
         return guides;
     }
 
+    /**
+     * Obtiene las guías que pertenecen a un módulo específico, basado en su ID.
+     *
+     * @param moduleId ID del módulo para el cual se desean obtener las guías.
+     * @return Lista de guías asociadas a dicho módulo.
+     * @throws ResourceNotFoundException si no se encuentran guías para el módulo proporcionado.
+     */
+    public List<GuideDomain> getGuidesByModuleId(Integer moduleId) {
+        List<GuideDomain> guides = guideDomainRepository.getByModuleId(moduleId);
+        if (guides.isEmpty()) {
+            throw new ResourceNotFoundException("No hay guias disponibles para este modulo.");
+        }
+        return guides;
+    }
+
     // Método para crear una nueva guía educativa
     public GuideDomain createGuide(CreateGuideRequestDTO dto) {
         try {

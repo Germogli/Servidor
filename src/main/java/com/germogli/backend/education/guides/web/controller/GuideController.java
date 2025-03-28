@@ -29,11 +29,27 @@ public class GuideController {
      */
     @GetMapping
     public ResponseEntity<ApiResponseDTO<List<GuideResponseDTO>>> getAllGuides() {
-        List<GuideDomain> domains = guideDomainService.getAllGuides();
-        List<GuideResponseDTO> guides = guideDomainService.toResponseList(domains);
+        List<GuideResponseDTO> guides = guideDomainService.toResponseList(guideDomainService.getAllGuides());
         return ResponseEntity.ok(
                 ApiResponseDTO.<List<GuideResponseDTO>>builder()
                         .message("Guías recuperadas correctamente")
+                        .data(guides)
+                        .build()
+        );
+    }
+
+    /**
+     * Obtiene las guías pertenecientes a un módulo específico según su ID.
+     *
+     * @param id ID del módulo para el que se desean obtener las guías.
+     * @return ResponseEntity con la lista de guías en un ApiResponseDTO.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<List<GuideResponseDTO>>> getGuidesByModuleId(@PathVariable Integer id) {
+        List<GuideResponseDTO> guides = guideDomainService.toResponseList(guideDomainService.getGuidesByModuleId(id));
+        return ResponseEntity.ok(
+                ApiResponseDTO.<List<GuideResponseDTO>>builder()
+                        .message("Guías recuperadas correctamente para el modulo con id " + id)
                         .data(guides)
                         .build()
         );
