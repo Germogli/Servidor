@@ -33,6 +33,25 @@ public class GuideDomainService {
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
 
     /**
+     * Elimina una guía educativa: primero elimina el archivo en Azure Blob Storage y luego la guía en la base de datos.
+     *
+     * @param guideId ID de la guía a eliminar.
+     */
+    public void deleteGuide(Integer guideId) {
+        // Obtener la guía; si no existe, se lanzará ResourceNotFoundException
+        GuideDomain guide = getGuideById(guideId);
+
+        // Extraer el nombre del archivo (blob) desde la URL o directamente desde el campo pdfFileName
+        String blobName = guide.getPdfFileName();
+
+        // Eliminar el archivo (blob) del contenedor "pdfs-educativos" en Azure
+        azureBlobStorageService.deleteBlob("pdfs-educativos", blobName);
+
+        // Llamar al repositorio para eliminar la guía en la base de datos
+        guideDomainRepository.deleteGuide(guideId);
+    }
+
+    /**
      * Actualiza los datos de una guía educativa en la base de datos.
      *
      * @param dto El objeto UpdateGuideRequest con la nueva información de la guía.

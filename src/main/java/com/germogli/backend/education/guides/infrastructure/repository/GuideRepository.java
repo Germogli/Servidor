@@ -150,4 +150,24 @@ public class GuideRepository implements GuideDomainRepository {
         return guideDomain;
     }
 
+    /**
+     * Elimina una guia en la base de datos utilizando un procedimiento almacenado.
+     *
+     * @param guideId de La guía que se va a eliminar.
+     */
+    @Override
+    public void deleteGuide(Integer guideId) {
+        // Crear la consulta del procedimiento almacenado para eliminar la guía
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_guide");
+
+        // Registrar el parámetro de entrada para el SP
+        query.registerStoredProcedureParameter("p_guide_id", Integer.class, ParameterMode.IN);
+
+        // Asignar el valor del parámetro
+        query.setParameter("p_guide_id", guideId);
+
+        // Ejecutar el SP
+        query.execute();
+    }
+
 }

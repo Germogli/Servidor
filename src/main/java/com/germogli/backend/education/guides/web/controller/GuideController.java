@@ -114,4 +114,20 @@ public class GuideController {
                         .build()
         );
     }
+
+    /**
+     * Elimina una guía educativa según su ID.
+     *
+     * @param id ID de la guía a eliminar.
+     * @return ResponseEntity con un mensaje confirmando la eliminación.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteGuide(@PathVariable Integer id) {
+        guideDomainService.deleteGuide(id);
+        return ResponseEntity.ok(
+                ApiResponseDTO.<Void>builder()
+                        .message("Guía eliminada correctamente")
+                        .build()
+        );
+    }
 }

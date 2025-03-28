@@ -11,4 +11,5 @@ public interface GuideDomainRepository {
     List<GuideDomain> getByModuleId(Integer moduleId);
     Optional<GuideDomain> getById(Integer guideId);
     GuideDomain updateGuideInfo(GuideDomain guideDomain);
+    void deleteGuide(Integer guideId);
 }
