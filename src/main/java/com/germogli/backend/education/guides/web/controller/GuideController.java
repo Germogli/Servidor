@@ -30,19 +30,7 @@ public class GuideController {
     @GetMapping
     public ResponseEntity<ApiResponseDTO<List<GuideResponseDTO>>> getAllGuides() {
         List<GuideDomain> domains = guideDomainService.getAllGuides();
-
-        // Logging adicional antes de la conversión a DTO
-        domains.forEach(domain -> {
-            System.out.println("Pre-DTO Conversion - Domain PDF File Name: " + domain.getPdfFileName());
-        });
-
         List<GuideResponseDTO> guides = guideDomainService.toResponseList(domains);
-
-        // Logging de los DTOs
-        guides.forEach(guide -> {
-            System.out.println("Response DTO - PDF File Name: " + guide.getPdfFileName());
-        });
-
         return ResponseEntity.ok(
                 ApiResponseDTO.<List<GuideResponseDTO>>builder()
                         .message("Guías recuperadas correctamente")

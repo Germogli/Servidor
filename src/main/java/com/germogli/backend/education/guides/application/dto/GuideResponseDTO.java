@@ -35,10 +35,6 @@ public class GuideResponseDTO {
      * @return DTO con los datos mapeados.
      */
     public static GuideResponseDTO fromDomain(GuideDomain domain) {
-
-        // Logging adicional
-        System.out.println("DTO Conversion - Domain PDF File Name: " + domain.getPdfFileName());
-
         return GuideResponseDTO.builder()
                 .guideId(domain.getGuideId())
                 .title(domain.getTitle())

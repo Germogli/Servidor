@@ -106,6 +106,24 @@ public class GuideDomainService {
         return "https://germoglistorage.blob.core.windows.net/pdfs-educativos/" + fileName;
     }
 
+    // Método para obtener URL segura con SAS Token
+    public String getSecureGuideUrl(GuideDomain guide) {
+        // Extrae el nombre del archivo de la URL original
+        String fileName = extractFileNameFromUrl(guide.getPdfUrl());
+
+        // Genera token SAS con duración de 150 minutos
+        return azureBlobStorageService.generateSasToken(
+                "pdfs-educativos",
+                fileName,
+                150  // 150 minutos de duración
+        );
+    }
+
+    // Método auxiliar para extraer nombre de archivo desde URL
+    private String extractFileNameFromUrl(String url) {
+        return url.substring(url.lastIndexOf("/") + 1);
+    }
+
     /**
      * Convierte una lista de entidades de dominio a DTOs de respuesta.
      *
@@ -119,7 +137,8 @@ public class GuideDomainService {
                     dto.setGuideId(domain.getGuideId());
                     dto.setTitle(domain.getTitle());
                     dto.setDescription(domain.getDescription());
-                    dto.setPdfUrl(domain.getPdfUrl());
+                    // Generar URL segura con SAS Token
+                    dto.setPdfUrl(getSecureGuideUrl(domain));
                     dto.setPdfFileName(domain.getPdfFileName());  // Copia explícita del nombre del archivo
                     dto.setCreationDate(domain.getCreationDate());
                     dto.setModuleId(domain.getModuleId() != null ? domain.getModuleId().getModuleId() : null);
