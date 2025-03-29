@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Controlador REST para gestionar videos en el módulo Education.
  */
@@ -49,6 +51,23 @@ public class VideoController {
                 ApiResponseDTO.<VideoResponseDTO>builder()
                         .message("Video recuperado correctamente")
                         .data(VideoResponseDTO.fromDomain(video))
+                        .build()
+        );
+    }
+
+    /**
+     * Obtiene todos los videos asociados a un módulo específico.
+     *
+     * @param moduleId ID del módulo.
+     * @return ResponseEntity con la lista de videos en un ApiResponseDTO.
+     */
+    @GetMapping("/getByModuleId/{moduleId}")
+    public ResponseEntity<ApiResponseDTO<List<VideoResponseDTO>>> getVideosByModuleId(@PathVariable Integer moduleId) {
+        List<VideoResponseDTO> videos = videoDomainService.toResponseList(videoDomainService.getVideosByModuleId(moduleId));
+        return ResponseEntity.ok(
+                ApiResponseDTO.<List<VideoResponseDTO>>builder()
+                        .message("Videos recuperados correctamente para el módulo con id " + moduleId)
+                        .data(videos)
                         .build()
         );
     }

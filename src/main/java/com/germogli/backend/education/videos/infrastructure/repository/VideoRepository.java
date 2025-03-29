@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Repositorio para gestionar operaciones de videos utilizando procedimientos almacenados.
@@ -68,9 +69,20 @@ public class VideoRepository implements VideoDomainRepository {
         }
     }
 
+    /**
+     * Obtiene todos los videos que pertenecen a un módulo específico.
+     *
+     * @param moduleId ID del módulo.
+     * @return Lista de VideoDomain.
+     */
     @Override
     public List<VideoDomain> getVideosByModuleId(Integer moduleId) {
-        return List.of();
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_videos_by_module_id", VideoEntity.class);
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_module_id", moduleId);
+        query.execute();
+        List<VideoEntity> resultList = query.getResultList();
+        return resultList.stream().map(VideoDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     @Override

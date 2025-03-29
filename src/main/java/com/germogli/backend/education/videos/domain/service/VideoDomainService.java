@@ -6,6 +6,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import com.germogli.backend.education.videos.application.dto.CreateVideoRequestDTO;
+import com.germogli.backend.education.videos.application.dto.VideoResponseDTO;
 import com.germogli.backend.education.videos.domain.model.VideoDomain;
 import com.germogli.backend.education.videos.domain.repository.VideoDomainRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Servicio de dominio para gestionar videos educativos.
@@ -74,6 +77,43 @@ public class VideoDomainService {
     public VideoDomain getVideoById(Integer id) {
         return videoDomainRepository.getById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Video no encontrado con id " + id));
+    }
+
+    /**
+     * Obtiene todos los videos asociados a un módulo.
+     *
+     * @param moduleId ID del módulo.
+     * @return Lista de VideoDomain.
+     * @throws ResourceNotFoundException si no se encuentran videos.
+     */
+    public List<VideoDomain> getVideosByModuleId(Integer moduleId) {
+        // Verificar que el módulo exista
+        moduleDomainService.getModuleById(moduleId);
+        List<VideoDomain> videos = videoDomainRepository.getVideosByModuleId(moduleId);
+        if (videos.isEmpty()) {
+            throw new ResourceNotFoundException("No hay videos disponibles para este módulo.");
+        }
+        return videos;
+    }
+
+    /**
+     * Convierte una lista de objetos de dominio VideoDomain a DTOs de respuesta.
+     *
+     * @param domains Lista de objetos VideoDomain que representan los videos en la capa de dominio.
+     * @return Lista de objetos VideoResponseDTO con los datos formateados para la respuesta al cliente.
+     */
+    public List<VideoResponseDTO> toResponseList(List<VideoDomain> domains) {
+        return domains.stream()
+                .map(domain -> {
+                    VideoResponseDTO dto = new VideoResponseDTO();
+                    dto.setVideoId(domain.getVideoId());
+                    dto.setTitle(domain.getTitle());
+                    dto.setVideoUrl(domain.getVideoUrl());
+                    dto.setCreationDate(domain.getCreationDate());
+                    dto.setModuleId(domain.getModuleId() != null ? domain.getModuleId().getModuleId() : null);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
 }
