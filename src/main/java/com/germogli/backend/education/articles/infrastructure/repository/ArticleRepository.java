@@ -113,4 +113,28 @@ public class ArticleRepository implements ArticleDomainRepository {
             return Optional.of(ArticleDomain.fromEntityStatic(resultList.get(0)));
         }
     }
+
+    @Override
+    public ArticleDomain updateArticleInfo(ArticleDomain articleDomain) {
+        // Crear la consulta del procedimiento almacenado para actualizar el artículo
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_article_info");
+
+        // Registrar los parámetros de entrada
+        query.registerStoredProcedureParameter("p_article_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_title", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_article_url", String.class, ParameterMode.IN);
+
+        // Asignar los valores de los parámetros de entrada desde el objeto de dominio
+        query.setParameter("p_article_id", articleDomain.getArticleId());
+        query.setParameter("p_module_id", articleDomain.getModuleId().getModuleId());
+        query.setParameter("p_title", articleDomain.getTitle());
+        query.setParameter("p_article_url", articleDomain.getArticleUrl());
+
+        // Ejecutar el procedimiento almacenado
+        query.execute();
+
+        // Retornar el objeto actualizado
+        return articleDomain;
+    }
 }

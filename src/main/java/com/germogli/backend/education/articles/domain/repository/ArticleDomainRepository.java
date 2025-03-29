@@ -9,4 +9,5 @@ public interface ArticleDomainRepository {
     ArticleDomain createArticle(ArticleDomain articleDomain);
     List<ArticleDomain> getByArticlesByModuleId(Integer id);
     Optional<ArticleDomain> getById(Integer id);
+    ArticleDomain updateArticleInfo(ArticleDomain articleDomain);
 }

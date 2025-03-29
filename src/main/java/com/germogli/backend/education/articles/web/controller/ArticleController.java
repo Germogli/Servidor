@@ -3,6 +3,7 @@ package com.germogli.backend.education.articles.web.controller;
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
 import com.germogli.backend.education.articles.application.dto.ArticleResponseDTO;
 import com.germogli.backend.education.articles.application.dto.CreateArticleRequestDTO;
+import com.germogli.backend.education.articles.application.dto.UpdateArticleRequestDTO;
 import com.germogli.backend.education.articles.domain.model.ArticleDomain;
 import com.germogli.backend.education.articles.domain.service.ArticleDomainService;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +71,33 @@ public class ArticleController {
                 ApiResponseDTO.<ArticleResponseDTO>builder()
                         .message("Artículo recuperado correctamente")
                         .data(articleDTO)
+                        .build()
+        );
+    }
+
+    /**
+     * Actualiza los datos de un artículo educativo.
+     *
+     * @param id  ID del artículo a actualizar.
+     * @param dto Objeto UpdateArticleRequestDTO con la nueva información del artículo.
+     * @return ResponseEntity con el resultado de la actualización en un ApiResponseDTO.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<ArticleResponseDTO>> updateArticle(
+            @PathVariable Integer id,
+            @RequestBody UpdateArticleRequestDTO dto
+    ) {
+        // Llamar al servicio para actualizar el artículo con el id y el DTO proporcionados
+        ArticleDomain updatedArticle = articleDomainService.updateArticle(id, dto);
+
+        // Convertir el objeto de dominio actualizado a DTO de respuesta
+        ArticleResponseDTO responseDTO = ArticleResponseDTO.fromDomain(updatedArticle);
+
+        // Retornar la respuesta formateada
+        return ResponseEntity.ok(
+                ApiResponseDTO.<ArticleResponseDTO>builder()
+                        .message("Artículo actualizado correctamente")
+                        .data(responseDTO)
                         .build()
         );
     }

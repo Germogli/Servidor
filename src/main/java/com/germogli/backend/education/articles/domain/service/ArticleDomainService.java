@@ -5,6 +5,7 @@ import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.articles.application.dto.ArticleResponseDTO;
 import com.germogli.backend.education.articles.application.dto.CreateArticleRequestDTO;
+import com.germogli.backend.education.articles.application.dto.UpdateArticleRequestDTO;
 import com.germogli.backend.education.articles.domain.model.ArticleDomain;
 import com.germogli.backend.education.articles.domain.repository.ArticleDomainRepository;
 import com.germogli.backend.education.domain.service.EducationSharedService;
@@ -96,6 +97,56 @@ public class ArticleDomainService {
     }
 
     /**
+     * Actualiza un artículo educativo en la base de datos.
+     *
+     * @param articleId El ID del artículo a actualizar.
+     * @param dto El objeto UpdateArticleRequestDTO con la nueva información del artículo.
+     * @return El objeto ArticleDomain actualizado.
+     * @throws ResourceNotFoundException si el artículo no se encuentra.
+     */
+    public ArticleDomain updateArticle(Integer articleId, UpdateArticleRequestDTO dto) {
+        // Asignar el ID del artículo recibido al DTO
+        dto.setArticleId(articleId);
+
+        // Obtener el usuario autenticado
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+
+        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para actualizar artículos.");
+        }
+
+        // Verificar que el artículo existe; si no, lanzar una excepción
+        ArticleDomain existingArticle = articleDomainRepository.getById(articleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Artículo no encontrado con id " + articleId));
+
+        // Verificar que el módulo existe antes de actualizar, si se envía un módulo
+        if (dto.getModuleId() != null) {
+            moduleDomainService.getModuleById(dto.getModuleId());
+        }
+
+        // Crear el objeto ArticleDomain a partir del DTO, utilizando el ID recibido
+        ArticleDomain articleDomain = ArticleDomain.builder()
+                .articleId(articleId)                         // Asignar el ID del artículo
+                .moduleId(com.germogli.backend.education.module.domain.model.ModuleDomain.builder()
+                        .moduleId(dto.getModuleId())          // Módulo asociado
+                        .build())
+                .title(dto.getTitle())                        // Nuevo título
+                .articleUrl(dto.getArticleUrl())              // Nueva URL del artículo
+                .build();
+
+        // Llamar al repositorio para realizar la actualización mediante el SP
+        articleDomainRepository.updateArticleInfo(articleDomain);
+
+        // Recuperar el artículo actualizado para obtener todos los campos, incluyendo creationDate
+        ArticleDomain updatedArticle = articleDomainRepository.getById(articleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Error al recuperar el artículo actualizado con id " + articleId));
+
+        return updatedArticle;
+    }
+
+
+    /**
      * Convierte una lista de entidades de dominio a DTOs de respuesta.
      *
      * @param domains Lista de objetos GuideDomain que representan los artículos en la capa de dominio.
@@ -116,4 +167,5 @@ public class ArticleDomainService {
                 })
                 .collect(Collectors.toList());
     }
+
 }
