@@ -2,6 +2,7 @@ package com.germogli.backend.education.videos.web.controller;
 
 import com.germogli.backend.education.application.dto.ApiResponseDTO;
 import com.germogli.backend.education.videos.application.dto.CreateVideoRequestDTO;
+import com.germogli.backend.education.videos.application.dto.UpdateVideoRequestDTO;
 import com.germogli.backend.education.videos.application.dto.VideoResponseDTO;
 import com.germogli.backend.education.videos.domain.model.VideoDomain;
 import com.germogli.backend.education.videos.domain.service.VideoDomainService;
@@ -68,6 +69,29 @@ public class VideoController {
                 ApiResponseDTO.<List<VideoResponseDTO>>builder()
                         .message("Videos recuperados correctamente para el módulo con id " + moduleId)
                         .data(videos)
+                        .build()
+        );
+    }
+
+    /**
+     * Actualiza los datos de un video educativo.
+     *
+     * @param id  ID del video a actualizar.
+     * @param dto Objeto UpdateVideoRequestDTO con la nueva información.
+     * @return ResponseEntity con el video actualizado en un ApiResponseDTO.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<VideoResponseDTO>> updateVideo(
+            @PathVariable Integer id,
+            @RequestBody UpdateVideoRequestDTO dto
+    ) {
+        // Aseguramos el id en el DTO (si es necesario)
+        dto.setVideoId(id);
+        VideoDomain updatedVideo = videoDomainService.updateVideo(id, dto);
+        return ResponseEntity.ok(
+                ApiResponseDTO.<VideoResponseDTO>builder()
+                        .message("Video actualizado correctamente")
+                        .data(VideoResponseDTO.fromDomain(updatedVideo))
                         .build()
         );
     }

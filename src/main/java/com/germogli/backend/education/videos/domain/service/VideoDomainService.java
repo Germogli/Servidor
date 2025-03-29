@@ -6,6 +6,7 @@ import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import com.germogli.backend.education.videos.application.dto.CreateVideoRequestDTO;
+import com.germogli.backend.education.videos.application.dto.UpdateVideoRequestDTO;
 import com.germogli.backend.education.videos.application.dto.VideoResponseDTO;
 import com.germogli.backend.education.videos.domain.model.VideoDomain;
 import com.germogli.backend.education.videos.domain.repository.VideoDomainRepository;
@@ -94,6 +95,60 @@ public class VideoDomainService {
             throw new ResourceNotFoundException("No hay videos disponibles para este módulo.");
         }
         return videos;
+    }
+
+    /**
+     * Actualiza un video educativo.
+     *
+     * @param videoId ID del video a actualizar.
+     * @param dto Objeto UpdateVideoRequestDTO con la nueva información.
+     * @return El objeto VideoDomain actualizado.
+     */
+    public VideoDomain updateVideo(Integer videoId, UpdateVideoRequestDTO dto) {
+        // Asignar el ID al DTO (si es necesario)
+        dto.setVideoId(videoId);
+
+        // Obtener el usuario autenticado y verificar permisos
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para actualizar videos.");
+        }
+
+        // Verificar que el video exista
+        VideoDomain existingVideo = videoDomainRepository.getById(videoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Video no encontrado con id " + videoId));
+
+        // Validar que el título no esté vacío
+        if (dto.getTitle() == null || dto.getTitle().trim().isEmpty()) {
+            throw new CustomForbiddenException("El título del video no puede estar vacío");
+        }
+
+        // Validar que la URL del video no esté vacía
+        if (dto.getVideoUrl() == null || dto.getVideoUrl().trim().isEmpty()) {
+            throw new CustomForbiddenException("La URL del video no puede estar vacía");
+        }
+
+        // Verificar que el módulo exista, si se envía
+        if (dto.getModuleId() != null) {
+            moduleDomainService.getModuleById(dto.getModuleId());
+        }
+
+        // Convertir el DTO a VideoDomain de forma explícita
+        VideoDomain videoDomain = VideoDomain.builder()
+                .videoId(videoId)
+                .moduleId(com.germogli.backend.education.module.domain.model.ModuleDomain.builder()
+                        .moduleId(dto.getModuleId())
+                        .build())
+                .title(dto.getTitle())
+                .videoUrl(dto.getVideoUrl())
+                .build();
+
+        // Llamar al repositorio para actualizar mediante el SP
+        videoDomainRepository.updateVideo(videoDomain);
+
+        // Recuperar el video actualizado para obtener todos los campos (si es necesario)
+        return videoDomainRepository.getById(videoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Error al recuperar el video actualizado con id " + videoId));
     }
 
     /**

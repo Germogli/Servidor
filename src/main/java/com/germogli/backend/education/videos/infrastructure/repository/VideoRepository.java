@@ -85,9 +85,27 @@ public class VideoRepository implements VideoDomainRepository {
         return resultList.stream().map(VideoDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
+    /**
+     * Actualiza los datos de un video utilizando un procedimiento almacenado.
+     *
+     * @param videoDomain El objeto VideoDomain con la nueva información.
+     * @return El objeto VideoDomain actualizado.
+     */
     @Override
     public VideoDomain updateVideo(VideoDomain videoDomain) {
-        return null;
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_video_info");
+        query.registerStoredProcedureParameter("p_video_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_module_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_title", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_video_url", String.class, ParameterMode.IN);
+
+        query.setParameter("p_video_id", videoDomain.getVideoId());
+        query.setParameter("p_module_id", videoDomain.getModuleId().getModuleId());
+        query.setParameter("p_title", videoDomain.getTitle());
+        query.setParameter("p_video_url", videoDomain.getVideoUrl());
+
+        query.execute();
+        return videoDomain;
     }
 
     @Override
