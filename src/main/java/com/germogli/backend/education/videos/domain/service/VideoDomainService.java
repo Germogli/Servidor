@@ -1,0 +1,79 @@
+package com.germogli.backend.education.videos.domain.service;
+
+import com.germogli.backend.authentication.domain.model.UserDomain;
+import com.germogli.backend.common.exception.CustomForbiddenException;
+import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.education.domain.service.EducationSharedService;
+import com.germogli.backend.education.module.domain.service.ModuleDomainService;
+import com.germogli.backend.education.videos.application.dto.CreateVideoRequestDTO;
+import com.germogli.backend.education.videos.domain.model.VideoDomain;
+import com.germogli.backend.education.videos.domain.repository.VideoDomainRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+/**
+ * Servicio de dominio para gestionar videos educativos.
+ */
+@Service
+@RequiredArgsConstructor
+public class VideoDomainService {
+
+    private final VideoDomainRepository videoDomainRepository;
+    private final ModuleDomainService moduleDomainService;
+    private final EducationSharedService educationSharedService;
+
+    /**
+     * Crea un nuevo video educativo.
+     *
+     * @param dto Objeto CreateVideoRequestDTO con la información del video.
+     * @return El objeto VideoDomain creado.
+     */
+    public VideoDomain createVideo(CreateVideoRequestDTO dto) {
+        // Obtener el usuario autenticado
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para crear videos.");
+        }
+
+        // Validar que el título no esté vacío
+        if (dto.getTitle() == null || dto.getTitle().trim().isEmpty()) {
+            throw new CustomForbiddenException("El título del video no puede estar vacío");
+        }
+
+        // Validar que la URL del video no esté vacía
+        if (dto.getVideoUrl() == null || dto.getVideoUrl().trim().isEmpty()) {
+            throw new CustomForbiddenException("La URL del video no puede estar vacía");
+        }
+
+        // Verificar que el módulo existe
+        moduleDomainService.getModuleById(dto.getModuleId());
+
+        // Crear el objeto VideoDomain
+        VideoDomain videoDomain = VideoDomain.builder()
+                .moduleId(com.germogli.backend.education.module.domain.model.ModuleDomain.builder()
+                        .moduleId(dto.getModuleId())
+                        .build())
+                .title(dto.getTitle())
+                .videoUrl(dto.getVideoUrl())
+                .creationDate(LocalDateTime.now())
+                .build();
+
+        return videoDomainRepository.createVideo(videoDomain);
+    }
+
+    /**
+     * Obtiene un video por su ID.
+     *
+     * @param id ID del video.
+     * @return El objeto VideoDomain correspondiente.
+     * @throws ResourceNotFoundException si no se encuentra.
+     */
+    public VideoDomain getVideoById(Integer id) {
+        return videoDomainRepository.getById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Video no encontrado con id " + id));
+    }
+
+}
