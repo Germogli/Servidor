@@ -38,6 +38,14 @@ public class GuideDomainService {
      * @param guideId ID de la guía a eliminar.
      */
     public void deleteGuide(Integer guideId) {
+        // Obtener el usuario autenticado
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+
+        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
+        }
+
         // Obtener la guía; si no existe, se lanzará ResourceNotFoundException
         GuideDomain guide = getGuideById(guideId);
 
