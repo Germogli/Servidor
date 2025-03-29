@@ -2,6 +2,8 @@ package com.germogli.backend.education.articles.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.CustomForbiddenException;
+import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.education.articles.application.dto.ArticleResponseDTO;
 import com.germogli.backend.education.articles.application.dto.CreateArticleRequestDTO;
 import com.germogli.backend.education.articles.domain.model.ArticleDomain;
 import com.germogli.backend.education.articles.domain.repository.ArticleDomainRepository;
@@ -12,6 +14,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,5 +66,42 @@ public class ArticleDomainService {
 
         // Guardar el artículo en la base de datos utilizando el procedimiento almacenado
         return articleDomainRepository.createArticle(articleDomain);
+    }
+
+    /**
+     * Obtiene los artículos asociados a un módulo específico.
+     *
+     * @param moduleId ID del módulo.
+     * @return Lista de artículos (ArticleDomain) asociados al módulo.
+     * @throws ResourceNotFoundException si no se encuentran artículos para el módulo.
+     */
+    public List<ArticleDomain> getArticlesByModuleId(Integer moduleId) {
+        List<ArticleDomain> articles = articleDomainRepository.getByArticlesByModuleId(moduleId);
+        if (articles.isEmpty()) {
+            throw new ResourceNotFoundException("No hay artículos disponibles para este módulo.");
+        }
+        return articles;
+    }
+
+    /**
+     * Convierte una lista de entidades de dominio a DTOs de respuesta.
+     *
+     * @param domains Lista de objetos GuideDomain que representan los artículos en la capa de dominio.
+     * @return Lista de objetos ArticleResponseDTO con los datos formateados para la respuesta al cliente.
+     */
+    public List<ArticleResponseDTO> toResponseList(List<ArticleDomain> domains) {
+        return domains.stream()
+                .map(domain -> {
+                    ArticleResponseDTO dto = new ArticleResponseDTO();
+                    dto.setArticleId(domain.getArticleId());
+                    dto.setTitle(domain.getTitle());
+                    dto.setArticleUrl(domain.getArticleUrl());
+                    dto.setCreationDate(domain.getCreationDate());
+                    dto.setModuleId(domain.getModuleId().getModuleId());
+
+                    // Devuelve el DTO convertido para el mapeo
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }

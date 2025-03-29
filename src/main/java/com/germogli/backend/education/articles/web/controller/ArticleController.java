@@ -7,10 +7,9 @@ import com.germogli.backend.education.articles.domain.model.ArticleDomain;
 import com.germogli.backend.education.articles.domain.service.ArticleDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/articles")
@@ -35,6 +34,24 @@ public class ArticleController {
                 ApiResponseDTO.<ArticleResponseDTO>builder()
                         .message("Artículo creado correctamente")
                         .data(ArticleResponseDTO.fromDomain(createdArticle))
+                        .build()
+        );
+    }
+
+    /**
+     * Obtiene los artículos correspondientes a un módulo específico.
+     *
+     * @param moduleId ID del módulo para filtrar los artículos.
+     * @return ResponseEntity con la lista de artículos en un ApiResponseDTO.
+     */
+    @GetMapping("/module/{moduleId}")
+    public ResponseEntity<ApiResponseDTO<List<ArticleResponseDTO>>> getArticlesByModuleId(@PathVariable Integer moduleId) {
+        // Obtener la lista de artículos a través del servicio
+        List<ArticleResponseDTO> articles = articleDomainService.toResponseList(articleDomainService.getArticlesByModuleId(moduleId));
+        return ResponseEntity.ok(
+                ApiResponseDTO.<List<ArticleResponseDTO>>builder()
+                        .message("Artículos recuperados correctamente para el módulo con id " + moduleId)
+                        .data(articles)
                         .build()
         );
     }
