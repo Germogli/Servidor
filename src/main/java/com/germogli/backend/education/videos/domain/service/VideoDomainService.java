@@ -152,6 +152,24 @@ public class VideoDomainService {
     }
 
     /**
+     * Elimina un video educativo de la base de datos.
+     *
+     * @param videoId ID del video a eliminar.
+     * @throws ResourceNotFoundException si no se encuentra.
+     * @throws AccessDeniedException si el usuario no tiene permisos.
+     */
+    public void deleteVideo(Integer videoId) {
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para eliminar videos.");
+        }
+        // Verificar que el video existe
+        videoDomainRepository.getById(videoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Video no encontrado con id " + videoId));
+        videoDomainRepository.deleteVideo(videoId);
+    }
+
+    /**
      * Convierte una lista de objetos de dominio VideoDomain a DTOs de respuesta.
      *
      * @param domains Lista de objetos VideoDomain que representan los videos en la capa de dominio.

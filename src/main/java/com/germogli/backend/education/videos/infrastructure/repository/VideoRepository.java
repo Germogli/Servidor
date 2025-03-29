@@ -108,8 +108,16 @@ public class VideoRepository implements VideoDomainRepository {
         return videoDomain;
     }
 
+    /**
+     * Elimina un video utilizando un procedimiento almacenado.
+     *
+     * @param videoId ID del video a eliminar.
+     */
     @Override
     public void deleteVideo(Integer videoId) {
-
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_video");
+        query.registerStoredProcedureParameter("p_video_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_video_id", videoId);
+        query.execute();
     }
 }

@@ -95,4 +95,20 @@ public class VideoController {
                         .build()
         );
     }
+
+    /**
+     * Elimina un video educativo según su ID.
+     *
+     * @param id ID del video a eliminar.
+     * @return ResponseEntity con un mensaje confirmando la eliminación.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteVideo(@PathVariable Integer id) {
+        videoDomainService.deleteVideo(id);
+        return ResponseEntity.ok(
+                ApiResponseDTO.<Void>builder()
+                        .message("Video eliminado correctamente")
+                        .build()
+        );
+    }
 }
