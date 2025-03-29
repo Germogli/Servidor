@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -80,5 +81,36 @@ public class ArticleRepository implements ArticleDomainRepository {
         return resultList.stream()
                 .map(ArticleDomain::fromEntityStatic)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Obtiene un artículo por su ID en la base de datos utilizando un procedimiento almacenado.
+     *
+     * @param articleId El ID del artículo a obtener.
+     * @return Un objeto ArticleDomain con los datos del artículo, o Optional.
+     */
+    @Override
+    public Optional<ArticleDomain> getById(Integer articleId) {
+        // Crear la consulta del procedimiento almacenado, mapeando el resultado a ArticleEntity
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_article_by_id", ArticleEntity.class);
+
+        // Registrar el parámetro de entrada
+        query.registerStoredProcedureParameter("p_article_id", Integer.class, ParameterMode.IN);
+
+        // Asignar el valor del parámetro
+        query.setParameter("p_article_id", articleId);
+
+        // Ejecutar el SP
+        query.execute();
+
+        // Obtener la lista de resultados
+        List<ArticleEntity> resultList = query.getResultList();
+
+        // Si la lista está vacía, retornar Optional.empty(); de lo contrario, convertir el primer resultado
+        if (resultList.isEmpty()) {
+            return Optional.empty();
+        } else {
+            return Optional.of(ArticleDomain.fromEntityStatic(resultList.get(0)));
+        }
     }
 }

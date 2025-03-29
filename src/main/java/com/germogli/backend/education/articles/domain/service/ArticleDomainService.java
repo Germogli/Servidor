@@ -84,6 +84,18 @@ public class ArticleDomainService {
     }
 
     /**
+     * Obtiene un artículo educativo por su ID.
+     *
+     * @param id ID del artículo a buscar.
+     * @return El objeto ArticleDomain correspondiente.
+     * @throws ResourceNotFoundException si no se encuentra el artículo.
+     */
+    public ArticleDomain getArticleById(Integer id) {
+        return articleDomainRepository.getById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Artículo no encontrado con id " + id));
+    }
+
+    /**
      * Convierte una lista de entidades de dominio a DTOs de respuesta.
      *
      * @param domains Lista de objetos GuideDomain que representan los artículos en la capa de dominio.

@@ -44,7 +44,7 @@ public class ArticleController {
      * @param moduleId ID del módulo para filtrar los artículos.
      * @return ResponseEntity con la lista de artículos en un ApiResponseDTO.
      */
-    @GetMapping("/module/{moduleId}")
+    @GetMapping("/getByModuleId/{moduleId}")
     public ResponseEntity<ApiResponseDTO<List<ArticleResponseDTO>>> getArticlesByModuleId(@PathVariable Integer moduleId) {
         // Obtener la lista de artículos a través del servicio
         List<ArticleResponseDTO> articles = articleDomainService.toResponseList(articleDomainService.getArticlesByModuleId(moduleId));
@@ -55,4 +55,23 @@ public class ArticleController {
                         .build()
         );
     }
+
+    /**
+     * Obtiene un artículo específico por su ID.
+     *
+     * @param id ID del artículo a buscar.
+     * @return ResponseEntity con el artículo en un ApiResponseDTO.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<ArticleResponseDTO>> getArticleById(@PathVariable Integer id) {
+        ArticleDomain articleDomain = articleDomainService.getArticleById(id);
+        ArticleResponseDTO articleDTO = ArticleResponseDTO.fromDomain(articleDomain);
+        return ResponseEntity.ok(
+                ApiResponseDTO.<ArticleResponseDTO>builder()
+                        .message("Artículo recuperado correctamente")
+                        .data(articleDTO)
+                        .build()
+        );
+    }
+
 }
