@@ -168,4 +168,28 @@ public class ArticleDomainService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Elimina un artículo educativo de la base de datos.
+     *
+     * @param articleId El ID del artículo a eliminar.
+     * @throws ResourceNotFoundException si el artículo no se encuentra.
+     * @throws AccessDeniedException si el usuario no tiene permisos para eliminar artículos.
+     */
+    public void deleteArticle(Integer articleId) {
+        // Obtener el usuario autenticado
+        UserDomain currentUser = educationSharedService.getAuthenticatedUser();
+
+        // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
+        if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
+            throw new AccessDeniedException("El usuario no tiene permisos para eliminar artículos.");
+        }
+
+        // Verificar que el artículo existe antes de intentar eliminarlo
+        articleDomainRepository.getById(articleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Artículo no encontrado con id " + articleId));
+
+        // Llamar al repositorio para eliminar el artículo
+        articleDomainRepository.deleteById(articleId);
+    }
+
 }

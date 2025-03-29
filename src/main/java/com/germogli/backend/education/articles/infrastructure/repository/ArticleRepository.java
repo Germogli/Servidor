@@ -137,4 +137,19 @@ public class ArticleRepository implements ArticleDomainRepository {
         // Retornar el objeto actualizado
         return articleDomain;
     }
+
+    @Override
+    public void deleteById(Integer articleId) {
+        // Crear la consulta del procedimiento almacenado para eliminar el artículo
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_article");
+
+        // Registrar el parámetro de entrada para el SP
+        query.registerStoredProcedureParameter("p_article_id", Integer.class, ParameterMode.IN);
+
+        // Asignar el valor del parámetro
+        query.setParameter("p_article_id", articleId);
+
+        // Ejecutar el SP
+        query.execute();
+    }
 }

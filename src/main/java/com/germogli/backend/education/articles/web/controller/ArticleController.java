@@ -102,4 +102,19 @@ public class ArticleController {
         );
     }
 
+    /**
+     * Elimina un artículo educativo según su ID.
+     *
+     * @param id ID del artículo a eliminar.
+     * @return ResponseEntity con un mensaje confirmando la eliminación.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteArticle(@PathVariable Integer id) {
+        articleDomainService.deleteArticle(id);
+        return ResponseEntity.ok(
+                ApiResponseDTO.<Void>builder()
+                        .message("Artículo eliminado correctamente")
+                        .build()
+        );
+    }
 }
