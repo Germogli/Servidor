@@ -1,10 +1,10 @@
 package com.germogli.backend.community.group.domain.model;
 
-import com.germogli.backend.community.domain.model.BaseCommunityResource;
 import com.germogli.backend.community.domain.model.Converter;
 import com.germogli.backend.community.group.infrastructure.entity.GroupEntity;
 import lombok.Data;
 import lombok.experimental.SuperBuilder;
+import java.time.LocalDateTime;
 
 /**
  * Modelo de dominio para un grupo de la comunidad.
@@ -14,14 +14,14 @@ import lombok.experimental.SuperBuilder;
  */
 @Data
 @SuperBuilder
-public class GroupDomain extends BaseCommunityResource implements Converter<GroupDomain, GroupEntity> {
+public class GroupDomain implements Converter<GroupDomain, GroupEntity> {
     private Integer id;
     private String name;
     private String description;
+    private LocalDateTime creationDate;
 
     /**
-     * Método de instancia requerido por la interfaz Converter.
-     * Delegamos en el método estático para permitir el uso de referencias.
+     * Convierte una entidad GroupEntity en un objeto GroupDomain.
      *
      * @param entity Entidad a convertir.
      * @return Objeto GroupDomain con los datos de la entidad.
@@ -33,7 +33,6 @@ public class GroupDomain extends BaseCommunityResource implements Converter<Grou
 
     /**
      * Método estático para convertir una entidad GroupEntity en un objeto GroupDomain.
-     * Permite utilizar la referencia de método: GroupDomain::fromEntityStatic.
      *
      * @param entity Entidad a convertir.
      * @return Objeto GroupDomain con los datos de la entidad.
@@ -58,7 +57,7 @@ public class GroupDomain extends BaseCommunityResource implements Converter<Grou
                 .id(this.id)
                 .name(this.name)
                 .description(this.description)
-                .creationDate(this.getCreationDate())
+                .creationDate(this.creationDate)
                 .build();
     }
 }

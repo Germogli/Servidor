@@ -7,6 +7,7 @@ import com.germogli.backend.community.reaction.domain.model.ReactionDomain;
 import com.germogli.backend.community.reaction.domain.service.ReactionDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/reactions")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ReactionController {
 
     private final ReactionDomainService reactionDomainService;
@@ -68,6 +70,7 @@ public class ReactionController {
 
     /**
      * Endpoint para eliminar una reacción.
+     * Solo el propietario o un administrador pueden eliminarla.
      *
      * @param id Identificador de la reacción a eliminar.
      * @return Respuesta API confirmando la eliminación.

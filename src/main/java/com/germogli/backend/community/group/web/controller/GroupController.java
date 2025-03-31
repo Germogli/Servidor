@@ -6,7 +6,6 @@ import com.germogli.backend.community.group.application.dto.GroupResponseDTO;
 import com.germogli.backend.community.group.application.dto.UpdateGroupRequestDTO;
 import com.germogli.backend.community.group.domain.model.GroupDomain;
 import com.germogli.backend.community.group.domain.service.GroupDomainService;
-import com.germogli.backend.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,9 +20,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/groups")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class GroupController {
 
-    // Servicio de dominio para grupos, inyectado para manejar la lógica de negocio.
     private final GroupDomainService groupDomainService;
 
     /**
@@ -96,7 +95,7 @@ public class GroupController {
      * Solo se permite a usuarios con rol ADMINISTRADOR.
      *
      * @param id Identificador del grupo a eliminar.
-     * @return Respuesta API confirmando la eliminación.
+     * @return Respuesta API confirmando la eliminación.    
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -104,6 +103,19 @@ public class GroupController {
         groupDomainService.deleteGroup(id);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
                 .message("Grupo eliminado correctamente")
+                .build());
+    }
+    /**
+     * Endpoint para que el usuario autenticado se una a un grupo.
+     *
+     * @param groupId ID del grupo al que se desea unir.
+     * @return Respuesta API confirmando la unión.
+     */
+    @PostMapping("/{groupId}/join")
+    public ResponseEntity<ApiResponseDTO<Void>> joinGroup(@PathVariable Integer groupId) {
+        groupDomainService.joinGroup(groupId);
+        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
+                .message("Usuario unido al grupo correctamente")
                 .build());
     }
 }

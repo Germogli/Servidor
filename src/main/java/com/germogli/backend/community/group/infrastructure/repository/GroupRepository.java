@@ -66,7 +66,6 @@ public class GroupRepository implements GroupDomainRepository {
         if (resultList.isEmpty()) {
             return Optional.empty();
         }
-        // Se utiliza el método estático fromEntityStatic para convertir la entidad en el dominio.
         return Optional.of(GroupDomain.fromEntityStatic(resultList.get(0)));
     }
 

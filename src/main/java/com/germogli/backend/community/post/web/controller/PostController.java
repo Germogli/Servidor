@@ -20,9 +20,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/posts")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class PostController {
 
-    // Servicio de dominio para publicaciones.
     private final PostDomainService postDomainService;
 
     /**
@@ -71,14 +71,13 @@ public class PostController {
 
     /**
      * Endpoint para actualizar una publicación.
-     * Se requiere que el usuario esté autenticado.
      *
      * @param id      Identificador del post a actualizar.
      * @param request DTO con los datos a actualizar.
      * @return Respuesta API con el post actualizado.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@postSecurity.canUpdate(#id, principal)")
     public ResponseEntity<ApiResponseDTO<PostResponseDTO>> updatePost(@PathVariable Integer id,
                                                                       @Valid @RequestBody UpdatePostRequestDTO request) {
         PostDomain post = postDomainService.updatePost(id, request);
@@ -90,13 +89,12 @@ public class PostController {
 
     /**
      * Endpoint para eliminar una publicación.
-     * Se requiere que el usuario esté autenticado.
      *
      * @param id Identificador del post a eliminar.
      * @return Respuesta API confirmando la eliminación.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@postSecurity.canDelete(#id, principal)")
     public ResponseEntity<ApiResponseDTO<Void>> deletePost(@PathVariable Integer id) {
         postDomainService.deletePost(id);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()

@@ -1,6 +1,5 @@
 package com.germogli.backend.community.post.domain.model;
 
-import com.germogli.backend.community.domain.model.BaseCommunityResource;
 import com.germogli.backend.community.domain.model.Converter;
 import com.germogli.backend.community.post.infrastructure.entity.PostEntity;
 import lombok.Data;
@@ -14,7 +13,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @SuperBuilder
-public class PostDomain extends BaseCommunityResource implements Converter<PostDomain, PostEntity> {
+public class PostDomain implements Converter<PostDomain, PostEntity> {
     private Integer id;
     private Integer userId;
     private String postType;
@@ -25,8 +24,7 @@ public class PostDomain extends BaseCommunityResource implements Converter<PostD
     private Integer threadId;
 
     /**
-     * Método de instancia requerido por la interfaz Converter.
-     * Delegamos en el método estático para permitir el uso de referencias.
+     * Convierte una entidad PostEntity en un objeto PostDomain.
      *
      * @param entity Entidad a convertir.
      * @return Objeto PostDomain.
@@ -38,7 +36,6 @@ public class PostDomain extends BaseCommunityResource implements Converter<PostD
 
     /**
      * Método estático para convertir una entidad PostEntity en un objeto PostDomain.
-     * Permite usar la referencia de método: PostDomain::fromEntityStatic.
      *
      * @param entity Entidad a convertir.
      * @return Objeto PostDomain con los datos de la entidad.
@@ -53,7 +50,6 @@ public class PostDomain extends BaseCommunityResource implements Converter<PostD
                 .postDate(entity.getPostDate())
                 .groupId(entity.getGroupId())
                 .threadId(entity.getThreadId())
-                .creationDate(entity.getCreationDate())
                 .build();
     }
 
@@ -73,7 +69,6 @@ public class PostDomain extends BaseCommunityResource implements Converter<PostD
                 .postDate(this.postDate)
                 .groupId(this.groupId)
                 .threadId(this.threadId)
-                .creationDate(this.getCreationDate())
                 .build();
     }
 }

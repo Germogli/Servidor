@@ -1,6 +1,5 @@
 package com.germogli.backend.community.group.infrastructure.entity;
 
-import com.germogli.backend.community.infrastructure.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.AccessLevel;
+import java.time.LocalDateTime;
 
 /**
  * Entidad JPA que representa un grupo en la base de datos.
@@ -21,7 +21,7 @@ import lombok.AccessLevel;
 @NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 @Entity(name = "CommunityGroupEntity")
 @Table(name = "groups_comunity")
-public class GroupEntity extends BaseEntity {
+public class GroupEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,4 +33,7 @@ public class GroupEntity extends BaseEntity {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "creation_date", nullable = false, updatable = false)
+    private LocalDateTime creationDate = LocalDateTime.now();
 }

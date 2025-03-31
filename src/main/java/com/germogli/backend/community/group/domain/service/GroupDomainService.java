@@ -9,9 +9,14 @@ import com.germogli.backend.community.group.domain.repository.GroupDomainReposit
 import com.germogli.backend.community.group.application.dto.CreateGroupRequestDTO;
 import com.germogli.backend.community.group.application.dto.GroupResponseDTO;
 import com.germogli.backend.community.group.application.dto.UpdateGroupRequestDTO;
+import com.germogli.backend.community.group.infrastructure.crud.UserGroupCrudRepository;
+import com.germogli.backend.community.group.infrastructure.entity.UserGroupEntity;
+import com.germogli.backend.community.group.infrastructure.entity.UserGroupId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,12 +28,43 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupDomainService {
 
-    // Repositorio de grupos, inyectado para realizar operaciones de persistencia.
     private final GroupDomainRepository groupRepository;
-    // Servicio para enviar notificaciones.
     private final NotificationPublisher notificationPublisher;
-    // Servicio compartido para obtener el usuario autenticado y verificar roles.
     private final CommunitySharedService sharedService;
+    private final UserGroupCrudRepository userGroupCrudRepository;
+
+    /**
+     * Permite al usuario autenticado unirse a un grupo.
+     *
+     * @param groupId ID del grupo al que se desea unir.
+     */
+    @Transactional
+    public void joinGroup(Integer groupId) {
+        // Verificar que el grupo existe
+        GroupDomain group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Grupo no encontrado con id: " + groupId));
+
+        // Obtener el usuario autenticado
+        var currentUser = sharedService.getAuthenticatedUser();
+
+        // Crear la clave compuesta para la relación
+        UserGroupId userGroupId = UserGroupId.builder()
+                .userId(currentUser.getId())
+                .groupId(groupId)
+                .build();
+
+        // Si ya existe la membresía, se puede omitir la inserción
+        if (userGroupCrudRepository.existsById(userGroupId)) {
+            return;
+        }
+
+        // Crear y persistir la relación
+        UserGroupEntity membership = UserGroupEntity.builder()
+                .id(userGroupId)
+                .build();
+
+        userGroupCrudRepository.save(membership);
+    }
 
     /**
      * Verifica que el usuario autenticado tenga al menos uno de los roles permitidos.

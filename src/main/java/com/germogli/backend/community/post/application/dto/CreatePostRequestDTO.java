@@ -25,6 +25,7 @@ public class CreatePostRequestDTO {
      */
     @NotBlank(message = "El contenido es obligatorio")
     private String content;
+
     private String multimediaContent;
     private Integer groupId;
     private Integer threadId;

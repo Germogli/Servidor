@@ -1,4 +1,4 @@
-package com.germogli.backend.community.post.infrastructure.entity;
+package com.germogli.backend.community.message.infrastructure.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,40 +13,40 @@ import lombok.AccessLevel;
 import java.time.LocalDateTime;
 
 /**
- * Entidad JPA que representa una publicación.
- * Mapea la tabla posts.
+ * Entidad JPA que representa un mensaje.
+ * Se mapea a la tabla 'messages' según el nuevo script de base de datos.
  */
 @Data
 @SuperBuilder
 @NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
-@Entity(name = "CommunityPostEntity")
-@Table(name = "posts")
-public class PostEntity {
+@Entity(name = "CommunityMessageEntity")
+@Table(name = "messages")
+public class MessageEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "post_id")
+    @Column(name = "message_id")
     private Integer id;
+
+    @Column(name = "post_id", nullable = false)
+    private Integer postId;
 
     @Column(name = "user_id", nullable = false)
     private Integer userId;
 
-    @Column(name = "post_type", nullable = false, length = 50)
-    private String postType;
-
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "multimedia_content", length = 255)
-    private String multimediaContent;
-
-    // Usamos post_date como fecha de creación
-    @Column(name = "post_date", nullable = false)
-    private LocalDateTime postDate;
-
-    @Column(name = "group_id")
-    private Integer groupId;
+    /**
+     * Fecha del mensaje.
+     * Se mapea a la columna 'message_date' de la tabla.
+     */
+    @Column(name = "message_date", nullable = false)
+    private LocalDateTime creationDate;
 
     @Column(name = "thread_id")
     private Integer threadId;
+
+    @Column(name = "group_id")
+    private Integer groupId;
 }

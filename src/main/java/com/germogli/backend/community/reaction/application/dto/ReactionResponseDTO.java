@@ -15,5 +15,5 @@ public class ReactionResponseDTO {
     private Integer postId;
     private Integer userId;
     private String reactionType;
-    private LocalDateTime creationDate;
+    private LocalDateTime reactionDate;
 }

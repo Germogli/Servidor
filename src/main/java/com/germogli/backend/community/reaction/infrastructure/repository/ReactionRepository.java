@@ -42,7 +42,6 @@ public class ReactionRepository implements ReactionDomainRepository {
             query.setParameter("p_user_id", reaction.getUserId());
             query.setParameter("p_reaction_type", reaction.getReactionType());
             query.execute();
-            // Se asume que el SP se encarga de la inserción y asignación del ID.
             return reaction;
         } else {
             // Actualizar reacción mediante sp_update_reaction

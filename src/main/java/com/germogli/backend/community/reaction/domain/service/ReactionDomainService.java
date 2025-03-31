@@ -101,7 +101,7 @@ public class ReactionDomainService {
                 .postId(reaction.getPostId())
                 .userId(reaction.getUserId())
                 .reactionType(reaction.getReactionType())
-                .creationDate(reaction.getCreationDate())
+                .reactionDate(reaction.getReactionDate())
                 .build();
     }
 

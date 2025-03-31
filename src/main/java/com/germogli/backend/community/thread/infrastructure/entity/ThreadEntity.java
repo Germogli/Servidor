@@ -1,6 +1,5 @@
 package com.germogli.backend.community.thread.infrastructure.entity;
 
-import com.germogli.backend.community.infrastructure.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,17 +10,18 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.AccessLevel;
+import java.time.LocalDateTime;
 
 /**
  * Entidad JPA que representa un hilo (thread) en la base de datos.
- * Mapea la tabla "threads" y extiende BaseEntity para heredar el campo creationDate.
+ * Mapea la tabla "threads".
  */
 @Data
 @SuperBuilder
 @NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 @Entity(name = "CommunityThreadEntity")
 @Table(name = "threads")
-public class ThreadEntity extends BaseEntity {
+public class ThreadEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,4 +39,7 @@ public class ThreadEntity extends BaseEntity {
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "creation_date", nullable = false, updatable = false)
+    private LocalDateTime creationDate = LocalDateTime.now();
 }

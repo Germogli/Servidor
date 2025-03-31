@@ -85,7 +85,6 @@ public class PostRepository implements PostDomainRepository {
         if (resultList.isEmpty()) {
             return Optional.empty();
         }
-        // Usamos el método estático para convertir la entidad al dominio
         return Optional.of(PostDomain.fromEntityStatic(resultList.get(0)));
     }
 

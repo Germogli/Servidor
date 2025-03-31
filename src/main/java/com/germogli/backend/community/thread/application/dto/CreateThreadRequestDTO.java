@@ -1,7 +1,7 @@
 package com.germogli.backend.community.thread.application.dto;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateThreadRequestDTO {
-    @NotNull(message = "El ID del grupo es obligatorio")
     private Integer groupId;
 
     @NotBlank(message = "El título es obligatorio")

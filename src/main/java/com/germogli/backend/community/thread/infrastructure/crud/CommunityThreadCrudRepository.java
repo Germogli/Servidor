@@ -8,5 +8,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * Útil para operaciones simples que no requieran procedimientos almacenados.
  */
 public interface CommunityThreadCrudRepository extends JpaRepository<ThreadEntity, Integer> {
-    // Este repositorio extiende JpaRepository para aprovechar los métodos CRUD de JPA.
 }

@@ -3,149 +3,108 @@ package com.germogli.backend.community.thread.web.controller;
 import com.germogli.backend.community.application.dto.common.ApiResponseDTO;
 import com.germogli.backend.community.thread.application.dto.CreateThreadRequestDTO;
 import com.germogli.backend.community.thread.application.dto.ThreadResponseDTO;
-import com.germogli.backend.community.thread.application.dto.CreateThreadReplyRequestDTO;
-import com.germogli.backend.community.thread.application.dto.ThreadReplyResponseDTO;
+import com.germogli.backend.community.thread.application.dto.UpdateThreadRequestDTO;
+import com.germogli.backend.community.thread.domain.model.ThreadDomain;
 import com.germogli.backend.community.thread.domain.service.ThreadDomainService;
+import com.germogli.backend.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
 /**
- * Controlador REST para la gestión de hilos y respuestas en Community.
+ * Controlador REST para la gestión de hilos en la comunidad.
+ * Proporciona endpoints para crear, obtener, listar, actualizar y eliminar hilos.
  */
 @RestController
 @RequestMapping("/threads")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ThreadController {
 
     private final ThreadDomainService threadDomainService;
 
-    // Endpoints para hilos
-
     /**
-     * Crea un nuevo hilo.
+     * Endpoint para crear un nuevo hilo.
+     * Solo pueden crear hilos los usuarios con rol ADMINISTRADOR o MODERADOR.
      *
-     * @param request DTO con los datos del nuevo hilo.
+     * @param request DTO con los datos del hilo.
      * @return Respuesta API con el hilo creado.
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('MODERADOR')")
     public ResponseEntity<ApiResponseDTO<ThreadResponseDTO>> createThread(@Valid @RequestBody CreateThreadRequestDTO request) {
-        var thread = threadDomainService.createThread(request);
+        ThreadDomain thread = threadDomainService.createThread(request);
         return ResponseEntity.ok(ApiResponseDTO.<ThreadResponseDTO>builder()
-                .message("Thread creado correctamente")
+                .message("Hilo creado correctamente")
                 .data(threadDomainService.toThreadResponse(thread))
                 .build());
     }
 
     /**
-     * Obtiene un hilo por su ID.
+     * Endpoint para obtener un hilo por su ID.
      *
      * @param id Identificador del hilo.
      * @return Respuesta API con el hilo encontrado.
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<ThreadResponseDTO>> getThreadById(@PathVariable Integer id) {
-        var thread = threadDomainService.getThreadById(id);
+        ThreadDomain thread = threadDomainService.getThreadById(id);
         return ResponseEntity.ok(ApiResponseDTO.<ThreadResponseDTO>builder()
-                .message("Thread recuperado correctamente")
+                .message("Hilo recuperado correctamente")
                 .data(threadDomainService.toThreadResponse(thread))
                 .build());
     }
 
     /**
-     * Obtiene todos los hilos.
+     * Endpoint para listar todos los hilos.
      *
      * @return Respuesta API con la lista de hilos.
      */
     @GetMapping
     public ResponseEntity<ApiResponseDTO<List<ThreadResponseDTO>>> getAllThreads() {
-        var threads = threadDomainService.getAllThreads();
+        List<ThreadResponseDTO> threads = threadDomainService.toThreadResponseList(threadDomainService.getAllThreads());
         return ResponseEntity.ok(ApiResponseDTO.<List<ThreadResponseDTO>>builder()
-                .message("Threads recuperados correctamente")
-                .data(threadDomainService.toThreadResponseList(threads))
+                .message("Hilos recuperados correctamente")
+                .data(threads)
                 .build());
     }
 
     /**
-     * Actualiza un hilo.
+     * Endpoint para actualizar un hilo.
+     * Solo el creador del hilo puede actualizarlo.
      *
      * @param id      Identificador del hilo a actualizar.
      * @param request DTO con los nuevos datos.
      * @return Respuesta API con el hilo actualizado.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("@threadSecurity.canUpdate(#id, principal)")
     public ResponseEntity<ApiResponseDTO<ThreadResponseDTO>> updateThread(@PathVariable Integer id,
-                                                                          @Valid @RequestBody CreateThreadRequestDTO request) {
-        var thread = threadDomainService.updateThread(id, request);
+                                                                          @Valid @RequestBody UpdateThreadRequestDTO request) {
+        ThreadDomain updatedThread = threadDomainService.updateThread(id,
+                new CreateThreadRequestDTO(null, request.getTitle(), request.getContent()));
         return ResponseEntity.ok(ApiResponseDTO.<ThreadResponseDTO>builder()
-                .message("Thread actualizado correctamente")
-                .data(threadDomainService.toThreadResponse(thread))
+                .message("Hilo actualizado correctamente")
+                .data(threadDomainService.toThreadResponse(updatedThread))
                 .build());
     }
 
     /**
-     * Elimina un hilo.
+     * Endpoint para eliminar un hilo.
+     * Solo el creador o un administrador pueden eliminar el hilo.
      *
      * @param id Identificador del hilo a eliminar.
      * @return Respuesta API confirmando la eliminación.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("@threadSecurity.canDelete(#id, principal)")
     public ResponseEntity<ApiResponseDTO<Void>> deleteThread(@PathVariable Integer id) {
         threadDomainService.deleteThread(id);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
-                .message("Thread eliminado correctamente")
-                .build());
-    }
-
-    // Endpoints para respuestas (thread replies)
-
-    /**
-     * Crea una respuesta para un hilo.
-     *
-     * @param threadId Identificador del hilo al que se agrega la respuesta.
-     * @param request  DTO con los datos de la respuesta.
-     * @return Respuesta API con la respuesta creada.
-     */
-    @PostMapping("/{threadId}/replies")
-    public ResponseEntity<ApiResponseDTO<ThreadReplyResponseDTO>> createThreadReply(@PathVariable Integer threadId,
-                                                                                    @Valid @RequestBody CreateThreadReplyRequestDTO request) {
-        // Asigna el threadId del path al DTO.
-        request.setThreadId(threadId);
-        var reply = threadDomainService.createThreadReply(request);
-        return ResponseEntity.ok(ApiResponseDTO.<ThreadReplyResponseDTO>builder()
-                .message("Respuesta creada correctamente")
-                .data(threadDomainService.toThreadReplyResponse(reply))
-                .build());
-    }
-
-    /**
-     * Obtiene todas las respuestas de un hilo.
-     *
-     * @param threadId Identificador del hilo.
-     * @return Respuesta API con la lista de respuestas.
-     */
-    @GetMapping("/{threadId}/replies")
-    public ResponseEntity<ApiResponseDTO<List<ThreadReplyResponseDTO>>> getRepliesByThread(@PathVariable Integer threadId) {
-        var replies = threadDomainService.getRepliesByThreadId(threadId);
-        return ResponseEntity.ok(ApiResponseDTO.<List<ThreadReplyResponseDTO>>builder()
-                .message("Respuestas recuperadas correctamente")
-                .data(threadDomainService.toThreadReplyResponseList(replies))
-                .build());
-    }
-
-    /**
-     * Elimina una respuesta de un hilo.
-     *
-     * @param replyId Identificador de la respuesta a eliminar.
-     * @return Respuesta API confirmando la eliminación.
-     */
-    @DeleteMapping("/replies/{replyId}")
-    public ResponseEntity<ApiResponseDTO<Void>> deleteThreadReply(@PathVariable Integer replyId) {
-        threadDomainService.deleteThreadReply(replyId);
-        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
-                .message("Respuesta eliminada correctamente")
+                .message("Hilo eliminado correctamente")
                 .build());
     }
 }

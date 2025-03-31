@@ -25,11 +25,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PostDomainService {
 
-    // Repositorio para operaciones de persistencia de posts.
     private final PostDomainRepository postRepository;
-    // Servicio compartido para obtener el usuario autenticado y verificar roles.
     private final CommunitySharedService sharedService;
-    // Servicio para enviar notificaciones.
     private final NotificationPublisher notificationPublisher;
 
     /**

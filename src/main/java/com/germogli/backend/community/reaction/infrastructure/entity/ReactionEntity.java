@@ -1,6 +1,5 @@
 package com.germogli.backend.community.reaction.infrastructure.entity;
 
-import com.germogli.backend.community.infrastructure.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,7 +21,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(force = true, access = AccessLevel.PROTECTED)
 @Entity(name = "CommunityReactionEntity")
 @Table(name = "reactions")
-public class ReactionEntity extends BaseEntity {
+public class ReactionEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,4 +36,7 @@ public class ReactionEntity extends BaseEntity {
 
     @Column(name = "reaction_type", nullable = false, length = 50)
     private String reactionType;
+
+    @Column(name = "reaction_date", nullable = false)
+    private LocalDateTime reactionDate;
 }
