@@ -25,11 +25,21 @@ public class UserRepository implements UserDomainRepository {
         return authenticationUserCrudRepository.findByUsername(username)
                 .map(UserDomain::fromEntity);
     }
+    @Override
+    public Optional<UserDomain> findByEmail(String email) {
+        return authenticationUserCrudRepository.findByEmail(email)
+                .map(UserDomain::fromEntity);
+    }
 
     @Override
     public UserDomain save(UserDomain user) {
         UserEntity entity = user.toEntity();
         UserEntity savedEntity = authenticationUserCrudRepository.save(entity);
         return UserDomain.fromEntity(savedEntity);
+    }
+    @Override
+    public Optional<UserDomain> findById(Integer id) {
+        return authenticationUserCrudRepository.findById(id)
+                .map(UserDomain::fromEntity);
     }
 }

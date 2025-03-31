@@ -7,6 +7,7 @@ import com.germogli.backend.authentication.domain.model.Role;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import com.germogli.backend.authentication.infrastructure.security.JwtService;
+import com.germogli.backend.common.email.EmailService;
 import com.germogli.backend.common.exception.UserAlreadyExistsException;
 import com.germogli.backend.common.exception.UserNotFoundException;
 import com.germogli.backend.common.exception.AdminAccessDeniedException;
@@ -38,6 +39,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     // Gestor de autenticación para verificar credenciales.
     private final AuthenticationManager authenticationManager;
+    // Servicio para enviar emails.
+    private final EmailService emailService;
 
     /**
      * Autentica al usuario y genera un token JWT.
@@ -99,6 +102,11 @@ public class AuthService {
                 .build();
 
         userRepository.save(userDomain);
+        // Enviar email de confirmación
+        String subject = "Bienvenido a Germogli";
+        String text = "Hola " + userDomain.getUsername() + ",\n\nGracias por registrarte en Germogli. ¡Cultiva conocimiento, cosecha comunidad!";
+
+        emailService.sendSimpleMessage(userDomain.getEmail(), subject, text);
 
         // Genera el token JWT para el usuario registrado.
         String token = jwtService.getToken(userDomain.toUserDetails());

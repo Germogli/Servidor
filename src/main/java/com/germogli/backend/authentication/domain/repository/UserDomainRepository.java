@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface UserDomainRepository {
     Optional<UserDomain> findByUsername(String username);
     UserDomain save(UserDomain user);
+    Optional<UserDomain> findByEmail(String email);
+    Optional<UserDomain> findById(Integer id);
 }
