@@ -1,6 +1,9 @@
 package com.germogli.backend.authentication.web.controller;
+import com.germogli.backend.authentication.application.dto.PasswordResetDTO;
+import com.germogli.backend.authentication.application.dto.PasswordResetResponseDTO;
 import com.germogli.backend.authentication.application.service.PasswordResetService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,28 +17,21 @@ public class PasswordResetController {
 
     /**
      * Endpoint para solicitar la recuperación de contraseña.
-     * Se envía un email al usuario con un enlace para resetear la contraseña.
-     *
-     * Ejemplo de petición (POST):
      * URL: /auth/forgot-password?email=usuario@example.com
      */
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestParam("email") String email) {
-        passwordResetService.createPasswordResetTokenForUser(email);
-        return ResponseEntity.ok("Se ha enviado un email para restablecer la contraseña.");
+    public ResponseEntity<PasswordResetResponseDTO> forgotPassword(@RequestParam("email") String email) {
+        String token = passwordResetService.createPasswordResetTokenForUser(email);
+        return ResponseEntity.ok(new PasswordResetResponseDTO("Se ha enviado un email para restablecer la contraseña.", token));
     }
 
     /**
      * Endpoint para reiniciar la contraseña.
-     * Recibe el token y la nueva contraseña.
      *
-     * Ejemplo de petición (POST):
-     * URL: /auth/reset-password?token=TOKEN_GENERADO&newPassword=nuevaContraseña
      */
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestParam("token") String token,
-                                                @RequestParam("newPassword") String newPassword) {
-        passwordResetService.resetPassword(token, newPassword);
+    public ResponseEntity<String> resetPassword(@RequestBody PasswordResetDTO request) {
+        passwordResetService.resetPassword(request);
         return ResponseEntity.ok("La contraseña ha sido restablecida correctamente.");
     }
 }

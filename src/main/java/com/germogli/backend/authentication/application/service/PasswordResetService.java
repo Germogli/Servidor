@@ -1,4 +1,5 @@
 package com.germogli.backend.authentication.application.service;
+import com.germogli.backend.authentication.application.dto.PasswordResetDTO;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import com.germogli.backend.authentication.infrastructure.crud.PasswordResetTokenRepository;
@@ -23,12 +24,10 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public void createPasswordResetTokenForUser(String email) {
-        // Buscar usuario por email (asegúrate de implementar findByEmail en tu repositorio)
+    public String createPasswordResetTokenForUser(String email) {
         UserDomain user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + email));
 
-        // Generar token y establecer fecha de expiración (ejemplo: 1 hora)
         String token = UUID.randomUUID().toString();
         LocalDateTime expirationDate = LocalDateTime.now().plusHours(1);
 
@@ -40,7 +39,7 @@ public class PasswordResetService {
 
         tokenRepository.save(resetToken);
 
-        // Construir el enlace para restablecer la contraseña (ajusta la URL a tu front-end)
+        // Construir el enlace para restablecer la contraseña
         String resetUrl = "http://tusitio.com/reset-password?token=" + token;
         String subject = "Recuperación de Contraseña";
         String text = "Hola " + user.getUsername() + ",\n\n" +
@@ -49,11 +48,13 @@ public class PasswordResetService {
                 "Este enlace expirará en 1 hora.\n\nSaludos,\nEquipo Germogli";
 
         emailService.sendSimpleMessage(user.getEmail(), subject, text);
+
+        return token;
     }
 
     @Transactional
-    public void resetPassword(String token, String newPassword) {
-        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+    public void resetPassword(PasswordResetDTO request) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(request.getToken())
                 .orElseThrow(() -> new ResourceNotFoundException("Token no válido o expirado."));
 
         if (resetToken.getExpirationDate().isBefore(LocalDateTime.now())) {
@@ -64,7 +65,7 @@ public class PasswordResetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado."));
 
         // Actualizar la contraseña encriptándola
-        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
         // Eliminar el token después de su uso
