@@ -3,6 +3,7 @@ package com.germogli.backend.education.articles.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.common.notification.NotificationPublisher;
 import com.germogli.backend.education.articles.application.dto.ArticleResponseDTO;
 import com.germogli.backend.education.articles.application.dto.CreateArticleRequestDTO;
 import com.germogli.backend.education.articles.application.dto.UpdateArticleRequestDTO;
@@ -26,6 +27,7 @@ public class ArticleDomainService {
     private final ArticleDomainRepository articleDomainRepository;
     private final ModuleDomainService moduleDomainService;
     private final EducationSharedService educationSharedService;
+    private final NotificationPublisher notificationPublisher;
 
     /**
      * Crea un nuevo artículo educativo.
@@ -42,12 +44,12 @@ public class ArticleDomainService {
             throw new AccessDeniedException("El usuario no tiene permisos para crear artículos.");
         }
 
-     // Verificar que la URL del artículo no esté vacía
+        // Verificar que la URL del artículo no esté vacía
         if (dto.getArticleUrl() == null || dto.getArticleUrl().trim().isEmpty()) {
             throw new CustomForbiddenException("La URL del artículo no puede estar vacía");
         }
 
-    // Verificar que el título del artículo no esté vacío
+        // Verificar que el título del artículo no esté vacío
         if (dto.getTitle() == null || dto.getTitle().trim().isEmpty()) {
             throw new CustomForbiddenException("El título del artículo no puede estar vacío");
         }
@@ -66,7 +68,19 @@ public class ArticleDomainService {
                 .build();
 
         // Guardar el artículo en la base de datos utilizando el procedimiento almacenado
-        return articleDomainRepository.createArticle(articleDomain);
+        ArticleDomain createdArticle = articleDomainRepository.createArticle(articleDomain);
+
+        // Obtener el nombre del módulo para la notificación
+        String moduleName = moduleDomainService.getModuleById(dto.getModuleId()).getTitle();
+
+        // Enviar notificación WebSocket después de crear el artículo
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha creado un nuevo artículo: " + createdArticle.getTitle() + " en el módulo " + moduleName,
+                "education_article"
+        );
+
+        return createdArticle;
     }
 
     /**
@@ -138,13 +152,26 @@ public class ArticleDomainService {
         // Llamar al repositorio para realizar la actualización mediante el SP
         articleDomainRepository.updateArticleInfo(articleDomain);
 
+        // Obtener el nombre del módulo para la notificación (si el módulo existe)
+        String moduleName = "";
+        if (dto.getModuleId() != null) {
+            moduleName = moduleDomainService.getModuleById(dto.getModuleId()).getTitle();
+        }
+        String moduloInfo = !moduleName.isEmpty() ? " en el módulo " + moduleName : "";
+
+        // Enviar notificación WebSocket después de actualizar el artículo
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha actualizado el artículo: " + dto.getTitle() + moduloInfo,
+                "education_article"
+        );
+
         // Recuperar el artículo actualizado para obtener todos los campos, incluyendo creationDate
         ArticleDomain updatedArticle = articleDomainRepository.getById(articleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Error al recuperar el artículo actualizado con id " + articleId));
 
         return updatedArticle;
     }
-
 
     /**
      * Convierte una lista de entidades de dominio a DTOs de respuesta.
@@ -184,9 +211,27 @@ public class ArticleDomainService {
             throw new AccessDeniedException("El usuario no tiene permisos para eliminar artículos.");
         }
 
-        // Verificar que el artículo existe antes de intentar eliminarlo
-        articleDomainRepository.getById(articleId)
+        // Verificar que el artículo existe y obtenerlo para la notificación
+        ArticleDomain article = articleDomainRepository.getById(articleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Artículo no encontrado con id " + articleId));
+
+        // Obtener el nombre del módulo para la notificación (si el módulo existe)
+        String moduleName = "";
+        if (article.getModuleId() != null && article.getModuleId().getModuleId() != null) {
+            try {
+                moduleName = moduleDomainService.getModuleById(article.getModuleId().getModuleId()).getTitle();
+            } catch (ResourceNotFoundException e) {
+                // Si el módulo ya no existe, se maneja silenciosamente
+            }
+        }
+        String moduloInfo = !moduleName.isEmpty() ? " del módulo " + moduleName : "";
+
+        // Enviar notificación WebSocket antes de eliminar el artículo
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha eliminado el artículo: " + article.getTitle() + moduloInfo,
+                "education_article"
+        );
 
         // Llamar al repositorio para eliminar el artículo
         articleDomainRepository.deleteById(articleId);

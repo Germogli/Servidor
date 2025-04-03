@@ -3,6 +3,7 @@ package com.germogli.backend.education.videos.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.common.notification.NotificationPublisher;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import com.germogli.backend.education.videos.application.dto.CreateVideoRequestDTO;
@@ -28,6 +29,7 @@ public class VideoDomainService {
     private final VideoDomainRepository videoDomainRepository;
     private final ModuleDomainService moduleDomainService;
     private final EducationSharedService educationSharedService;
+    private final NotificationPublisher notificationPublisher;    // Servicio para enviar notificaciones a través de WebSockets
 
     /**
      * Crea un nuevo video educativo.
@@ -65,7 +67,20 @@ public class VideoDomainService {
                 .creationDate(LocalDateTime.now())
                 .build();
 
-        return videoDomainRepository.createVideo(videoDomain);
+        // Guardar el video en la base de datos
+        VideoDomain createdVideo = videoDomainRepository.createVideo(videoDomain);
+
+        // Obtener el nombre del módulo para la notificación
+        String moduleName = moduleDomainService.getModuleById(dto.getModuleId()).getTitle();
+
+        // Enviar notificación WebSocket después de crear el video
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha creado un nuevo video: " + createdVideo.getTitle() + " en el módulo " + moduleName,
+                "education_video"
+        );
+
+        return createdVideo;
     }
 
     /**
@@ -146,6 +161,20 @@ public class VideoDomainService {
         // Llamar al repositorio para actualizar mediante el SP
         videoDomainRepository.updateVideo(videoDomain);
 
+        // Obtener el nombre del módulo para la notificación
+        String moduleName = "";
+        if (dto.getModuleId() != null) {
+            moduleName = moduleDomainService.getModuleById(dto.getModuleId()).getTitle();
+        }
+        String moduloInfo = !moduleName.isEmpty() ? " en el módulo " + moduleName : "";
+
+        // Enviar notificación WebSocket después de actualizar el video
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha actualizado el video: " + dto.getTitle() + moduloInfo,
+                "education_video"
+        );
+
         // Recuperar el video actualizado para obtener todos los campos (si es necesario)
         return videoDomainRepository.getById(videoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Error al recuperar el video actualizado con id " + videoId));
@@ -163,9 +192,30 @@ public class VideoDomainService {
         if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
             throw new AccessDeniedException("El usuario no tiene permisos para eliminar videos.");
         }
-        // Verificar que el video existe
-        videoDomainRepository.getById(videoId)
+
+        // Verificar que el video existe y obtenerlo para la notificación
+        VideoDomain video = videoDomainRepository.getById(videoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Video no encontrado con id " + videoId));
+
+        // Obtener el nombre del módulo para la notificación (si el módulo existe)
+        String moduleName = "";
+        if (video.getModuleId() != null && video.getModuleId().getModuleId() != null) {
+            try {
+                moduleName = moduleDomainService.getModuleById(video.getModuleId().getModuleId()).getTitle();
+            } catch (ResourceNotFoundException e) {
+                // Si el módulo ya no existe, se maneja silenciosamente
+            }
+        }
+        String moduloInfo = !moduleName.isEmpty() ? " del módulo " + moduleName : "";
+
+        // Enviar notificación WebSocket antes de eliminar el video
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha eliminado el video: " + video.getTitle() + moduloInfo,
+                "education_video"
+        );
+
+        // Eliminar el video de la base de datos
         videoDomainRepository.deleteVideo(videoId);
     }
 

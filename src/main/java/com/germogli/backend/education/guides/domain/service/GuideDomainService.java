@@ -4,6 +4,7 @@ import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.azure.service.AzureBlobStorageService;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.common.notification.NotificationPublisher;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.guides.application.dto.CreateGuideRequestDTO;
 import com.germogli.backend.education.guides.application.dto.GuideResponseDTO;
@@ -31,6 +32,7 @@ public class GuideDomainService {
     private final ModuleDomainService moduleDomainService; // Servicio para gestionar los módulos educativos
     private final AzureBlobStorageService azureBlobStorageService; // Servicio para interactuar con Azure Blob Storage
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
+    private final NotificationPublisher notificationPublisher;    // Servicio para enviar notificaciones a través de WebSockets
 
     /**
      * Elimina una guía educativa: primero elimina el archivo en Azure Blob Storage y luego la guía en la base de datos.
@@ -43,7 +45,7 @@ public class GuideDomainService {
 
         // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
         if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
-            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
+            throw new AccessDeniedException("El usuario no tiene permisos para eliminar guías.");
         }
 
         // Obtener la guía; si no existe, se lanzará ResourceNotFoundException
@@ -57,6 +59,14 @@ public class GuideDomainService {
 
         // Llamar al repositorio para eliminar la guía en la base de datos
         guideDomainRepository.deleteGuide(guideId);
+
+        // Enviar notificación WebSocket después de eliminar la guía
+        Integer moduleId = guide.getModuleId() != null ? guide.getModuleId().getModuleId() : null;
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha eliminado la guía: " + guide.getTitle() + " del módulo educativo",
+                "education_guide"
+        );
     }
 
     /**
@@ -71,7 +81,7 @@ public class GuideDomainService {
 
         // Verificar si el usuario tiene el rol de "ADMINISTRADOR"
         if (!educationSharedService.hasRole(currentUser, "ADMINISTRADOR")) {
-            throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
+            throw new AccessDeniedException("El usuario no tiene permisos para actualizar guías.");
         }
 
         // Verificar que la guía existe; si no, lanzar una excepción
@@ -79,8 +89,9 @@ public class GuideDomainService {
                 .orElseThrow(() -> new ResourceNotFoundException("Guía no encontrada con id " + guideId));
 
         // Verificar si el módulo existe antes de actualizar
+        ModuleDomain module = null;
         if (dto.getModuleId() != null) {
-            moduleDomainService.getModuleById(dto.getModuleId());
+            module = moduleDomainService.getModuleById(dto.getModuleId());
         }
 
         // Crear el objeto GuideDomain a partir del DTO de forma explícita
@@ -94,7 +105,17 @@ public class GuideDomainService {
                 .build();
 
         // Llamar al repositorio para realizar la actualización
-        return guideDomainRepository.updateGuideInfo(guideDomain);
+        GuideDomain updatedGuide = guideDomainRepository.updateGuideInfo(guideDomain);
+
+        // Enviar notificación WebSocket después de actualizar la guía
+        String moduloInfo = module != null ? " del módulo " + module.getTitle() : "";
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha actualizado la guía: " + updatedGuide.getTitle() + moduloInfo,
+                "education_guide"
+        );
+
+        return updatedGuide;
     }
 
     /**
@@ -150,7 +171,7 @@ public class GuideDomainService {
             }
 
             // Verificar que el módulo existe antes de proceder
-            moduleDomainService.getModuleById(dto.getModuleId());
+            ModuleDomain module = moduleDomainService.getModuleById(dto.getModuleId());
 
             // Subir el archivo PDF a Azure y obtener la URL correspondiente
             String pdfUrl = this.uploadPdfToAzure(dto.getPdfFile(), dto.getModuleId(), dto.getTitle());
@@ -168,7 +189,16 @@ public class GuideDomainService {
                     .build();
 
             // Guardar la guía en la base de datos utilizando un procedimiento almacenado
-            return guideDomainRepository.createGuide(guideDomain);
+            GuideDomain createdGuide = guideDomainRepository.createGuide(guideDomain);
+
+            // Enviar notificación WebSocket después de crear la guía
+            notificationPublisher.publishNotification(
+                    currentUser.getId(),
+                    "Se ha creado una nueva guía: " + createdGuide.getTitle() + " en el módulo " + module.getTitle(),
+                    "education_guide"
+            );
+
+            return createdGuide;
 
         } catch (IOException e) {
             throw new RuntimeException("Error al subir el archivo PDF", e);
