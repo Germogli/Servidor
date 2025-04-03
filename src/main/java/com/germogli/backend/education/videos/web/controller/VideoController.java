@@ -8,6 +8,7 @@ import com.germogli.backend.education.videos.domain.model.VideoDomain;
 import com.germogli.backend.education.videos.domain.service.VideoDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/videos")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class VideoController {
 
     private final VideoDomainService videoDomainService;

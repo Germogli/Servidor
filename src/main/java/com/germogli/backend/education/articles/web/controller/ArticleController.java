@@ -8,6 +8,7 @@ import com.germogli.backend.education.articles.domain.model.ArticleDomain;
 import com.germogli.backend.education.articles.domain.service.ArticleDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/articles")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ArticleController {
 
     private final ArticleDomainService articleDomainService;

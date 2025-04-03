@@ -6,6 +6,7 @@ import com.germogli.backend.education.tag.domain.model.TagDomain;
 import com.germogli.backend.education.tag.domain.service.TagDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/tags")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TagController {
 
     private final TagDomainService tagDomainService;

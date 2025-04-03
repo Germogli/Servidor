@@ -8,6 +8,7 @@ import com.germogli.backend.education.module.domain.model.ModuleDomain;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/modules")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ModuleController {
 
     private final ModuleDomainService moduleDomainService;
