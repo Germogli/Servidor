@@ -198,6 +198,13 @@ public class ModuleDomainService {
 
         // Eliminar el módulo
         moduleDomainRepository.deleteModule(moduleId);
+
+        // Enviar notificación WebSocket después de eliminar el módulo
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha eliminado el módulo educativo: " + existingModule.getTitle(),
+                "education_module"
+        );
     }
 
     // Método auxiliar para convertir lista de dominios a lista de DTOs de respuesta
