@@ -2,6 +2,7 @@ package com.germogli.backend.education.module.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.common.notification.NotificationPublisher;
 import com.germogli.backend.education.module.application.dto.CreateModuleResponseDTO;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.application.dto.ModuleResponseDTO;
@@ -35,6 +36,8 @@ public class ModuleDomainService {
     private final TagDomainRepository tagDomainRepository;
     // Servicio compartido para obtener el usuario autenticado y verificar roles.
     private final EducationSharedService educationSharedService;
+    // Servicio para enviar notificaciones a través de WebSockets
+    private final NotificationPublisher notificationPublisher;
 
     /**
      * Obtiene todos los modulos.
@@ -82,7 +85,16 @@ public class ModuleDomainService {
                 .creationDate(LocalDateTime.now())
                 .build();
 
-        return moduleDomainRepository.createModuleWithTags(module);
+        ModuleDomain createdModule = moduleDomainRepository.createModuleWithTags(module);
+
+        // Enviar notificación WebSocket después de crear el módulo
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha creado un nuevo módulo educativo: " + createdModule.getTitle(),
+                "education_module"
+        );
+
+        return createdModule;
     }
 
     /**
@@ -124,8 +136,17 @@ public class ModuleDomainService {
                 .creationDate(existingModule.getCreationDate()) // Mantener la fecha original
                 .build();
 
-        // Llamar al repositorio para ejecutar el SP
-        return moduleDomainRepository.updateModuleWithTags(updatedModule);
+        // Actualizar el módulo en la base de datos
+        ModuleDomain result = moduleDomainRepository.updateModuleWithTags(updatedModule);
+
+        // Enviar notificación WebSocket después de actualizar el módulo
+        notificationPublisher.publishNotification(
+                currentUser.getId(),
+                "Se ha actualizado el módulo educativo: " + result.getTitle(),
+                "education_module"
+        );
+
+        return result;
     }
 
     /**
