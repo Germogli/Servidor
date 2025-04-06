@@ -3,42 +3,70 @@ package com.germogli.backend.community.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
+import com.germogli.backend.community.post.domain.model.PostDomain;
+import com.germogli.backend.community.post.domain.repository.PostDomainRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 /**
- * Servicio compartido para operaciones comunes en el módulo Community.
- * Permite obtener el usuario autenticado y verificar roles.
+ * Servicio compartido para operaciones comunes dentro del módulo Community.
+ * Proporciona utilidades para obtener el usuario autenticado, validar roles y verificar recursos relacionados.
  */
 @Service
 @RequiredArgsConstructor
 public class CommunitySharedService {
 
     private final UserDomainRepository userRepository;
+    private final PostDomainRepository postRepository;
 
     /**
-     * Obtiene el usuario autenticado actual.
+     * Obtiene el usuario autenticado actual desde el contexto de seguridad.
      *
-     * @return Usuario del dominio.
-     * @throws ResourceNotFoundException si no se encuentra el usuario.
+     * @return Usuario autenticado como entidad de dominio.
+     * @throws ResourceNotFoundException si el usuario no se encuentra en el sistema.
      */
     public UserDomain getAuthenticatedUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String username = userDetails.getUsername();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con username: " + username));
     }
 
     /**
-     * Verifica si el usuario posee un rol específico.
+     * Verifica si un usuario posee un rol específico.
      *
-     * @param userDomain Usuario del dominio.
-     * @param role       Rol a verificar (por ejemplo, "ADMINISTRADOR").
-     * @return true si el usuario tiene el rol indicado, false en caso contrario.
+     * @param userDomain Usuario a verificar.
+     * @param role       Rol esperado (por ejemplo, "ADMINISTRADOR").
+     * @return true si el usuario posee el rol indicado, false en caso contrario.
      */
     public boolean hasRole(UserDomain userDomain, String role) {
-        return userDomain.getRole() != null && userDomain.getRole().getRoleType().equalsIgnoreCase(role);
+        return userDomain.getRole() != null &&
+                userDomain.getRole().getRoleType().equalsIgnoreCase(role);
     }
+
+    /**
+     * Valida que una publicación exista en el sistema.
+     *
+     * @param postId Identificador de la publicación.
+     * @throws ResourceNotFoundException si la publicación no existe.
+     */
+    public void validatePostExists(Integer postId) {
+        postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Publicación no encontrada con id: " + postId));
+    }
+
+    /**
+     * Obtiene el ID del propietario de una publicación.
+     *
+     * @param postId Identificador de la publicación.
+     * @return ID del usuario propietario de la publicación.
+     * @throws ResourceNotFoundException si la publicación no existe.
+     */
+    public Integer getOwnerIdOfPost(Integer postId) {
+        return postRepository.findOwnerIdByPostId(postId);
+    }
+
+
 }

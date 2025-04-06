@@ -8,9 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * Tarea programada para eliminar hilos expirados para pruebas.
- * Esta tarea se ejecuta cada 2 minutos y elimina aquellos hilos
- * cuyo campo creationDate más 2 minutos sea anterior a la fecha actual.
+ * Tarea programada para eliminar hilos expirados.
+ * Esta tarea se ejecuta una vez al día y elimina aquellos hilos
+ * cuyo campo creationDate más 2 días sea anterior a la fecha actual.
  */
 @Component
 public class ThreadExpirationTask {
@@ -22,10 +22,10 @@ public class ThreadExpirationTask {
     }
 
     /**
-     * Ejecuta la tarea cada 2 minutos.
-     * Se eliminan los hilos que tengan más de 2 minutos de creación.
+     * Ejecuta la tarea una vez al día a medianoche.
+     * Se eliminan los hilos que tengan más de 2 días de creación.
      */
-    @Scheduled(cron = "0 0/2 * * * *")
+    @Scheduled(cron = "0 0 0 * * *") // Ejecuta cada día a medianoche
     @Transactional
     public void removeExpiredThreads() {
         LocalDateTime now = LocalDateTime.now();

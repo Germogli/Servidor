@@ -1,7 +1,6 @@
 package com.germogli.backend.community.message.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.common.notification.NotificationPublisher;
 import com.germogli.backend.community.message.domain.model.MessageDomain;
 import com.germogli.backend.community.message.domain.repository.MessageDomainRepository;
 import com.germogli.backend.community.message.application.dto.CreateMessageRequestDTO;
@@ -24,8 +23,6 @@ public class MessageDomainService {
 
     private final MessageDomainRepository messageRepository;
     private final CommunitySharedService sharedService;
-    private final NotificationPublisher notificationPublisher;
-
     /**
      * Crea un mensaje utilizando los datos del DTO.
      *
@@ -42,14 +39,6 @@ public class MessageDomainService {
                 .groupId(request.getGroupId())
                 .build();
         MessageDomain savedMessage = messageRepository.save(message);
-
-        // Notifica la creación del mensaje (por ejemplo, al autor del post)
-        notificationPublisher.publishNotification(
-                currentUser.getId(),
-                "Se ha agregado un mensaje en el post",
-                "message"
-        );
-
         return savedMessage;
     }
 
@@ -97,11 +86,7 @@ public class MessageDomainService {
             throw new AccessDeniedException("No tiene permisos para eliminar este mensaje");
         }
         messageRepository.deleteById(id);
-        notificationPublisher.publishNotification(
-                currentUser.getId(),
-                "Su mensaje ha sido eliminado",
-                "message"
-        );
+
     }
 
 

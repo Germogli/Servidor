@@ -84,4 +84,16 @@ public class GlobalException {
     public ResponseEntity<String> handleRoleNotAllowedException(RoleNotAllowedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
     }
+
+    @ExceptionHandler(NotificationException.class)
+    public ResponseEntity<ApiResponseDTO<String>> handleNotificationException(NotificationException ex) {
+        return new ResponseEntity<>(
+                ApiResponseDTO.<String>builder()
+                        .message("Error al procesar la notificación: " + ex.getMessage())
+                        .data(null)
+                        .build(),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+
 }

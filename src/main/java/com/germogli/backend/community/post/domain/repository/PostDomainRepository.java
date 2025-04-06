@@ -12,4 +12,5 @@ public interface PostDomainRepository {
     Optional<PostDomain> findById(Integer id);
     List<PostDomain> findAll();
     void deleteById(Integer id);
+    Integer findOwnerIdByPostId(Integer postId);
 }

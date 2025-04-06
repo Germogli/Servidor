@@ -2,7 +2,7 @@ package com.germogli.backend.community.group.domain.service;
 
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.common.exception.RoleNotAllowedException;
-import com.germogli.backend.common.notification.NotificationPublisher;
+import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.community.domain.service.CommunitySharedService;
 import com.germogli.backend.community.group.domain.model.GroupDomain;
 import com.germogli.backend.community.group.domain.repository.GroupDomainRepository;
@@ -13,7 +13,6 @@ import com.germogli.backend.community.group.infrastructure.crud.UserGroupCrudRep
 import com.germogli.backend.community.group.infrastructure.entity.UserGroupEntity;
 import com.germogli.backend.community.group.infrastructure.entity.UserGroupId;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +28,7 @@ import java.util.stream.Collectors;
 public class GroupDomainService {
 
     private final GroupDomainRepository groupRepository;
-    private final NotificationPublisher notificationPublisher;
+    private final NotificationService notificationService;
     private final CommunitySharedService sharedService;
     private final UserGroupCrudRepository userGroupCrudRepository;
 
@@ -64,6 +63,10 @@ public class GroupDomainService {
                 .build();
 
         userGroupCrudRepository.save(membership);
+
+        // Notificar al usuario que se ha unido correctamente al grupo
+        String message = "Te has unido correctamente al grupo: " + group.getName();
+        notificationService.sendNotification(currentUser.getId(), message, "group");
     }
 
     /**
@@ -100,7 +103,7 @@ public class GroupDomainService {
                 .description(request.getDescription())
                 .build();
         GroupDomain savedGroup = groupRepository.save(group);
-        notificationPublisher.publishNotification(null,
+        notificationService.sendNotification(null,
                 "Se ha creado un nuevo grupo: " + request.getName(),
                 "group");
         return savedGroup;
@@ -147,7 +150,7 @@ public class GroupDomainService {
         existingGroup.setName(request.getName());
         existingGroup.setDescription(request.getDescription());
         GroupDomain updatedGroup = groupRepository.save(existingGroup);
-        notificationPublisher.publishNotification(null,
+        notificationService.sendNotification(null,
                 "El grupo " + request.getName() + " ha sido actualizado",
                 "group");
         return updatedGroup;
@@ -166,7 +169,7 @@ public class GroupDomainService {
             throw new ResourceNotFoundException("Grupo no encontrado con id: " + id);
         }
         groupRepository.deleteById(id);
-        notificationPublisher.publishNotification(null,
+        notificationService.sendNotification(null,
                 "Se ha eliminado un grupo",
                 "group");
     }

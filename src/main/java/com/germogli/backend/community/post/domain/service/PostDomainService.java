@@ -1,7 +1,7 @@
 package com.germogli.backend.community.post.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.common.notification.NotificationPublisher;
+import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.community.post.domain.model.PostDomain;
 import com.germogli.backend.community.post.domain.repository.PostDomainRepository;
 import com.germogli.backend.community.post.application.dto.CreatePostRequestDTO;
@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,7 +28,7 @@ public class PostDomainService {
 
     private final PostDomainRepository postRepository;
     private final CommunitySharedService sharedService;
-    private final NotificationPublisher notificationPublisher;
+    private final NotificationService notificationService;
 
     /**
      * Crea una nueva publicación.
@@ -46,11 +47,8 @@ public class PostDomainService {
                 .threadId(request.getThreadId())
                 .postDate(LocalDateTime.now())
                 .build();
-        PostDomain savedPost = postRepository.save(post);
-        notificationPublisher.publishNotification(currentUser.getId(),
-                "Se ha creado un nuevo post: " + request.getContent(),
-                "post");
-        return savedPost;
+
+        return postRepository.save(post); // No se envía notificación en creación
     }
 
     /**
@@ -91,11 +89,13 @@ public class PostDomainService {
     @Transactional
     public PostDomain updatePost(Integer id, UpdatePostRequestDTO request) {
         UserDomain currentUser = sharedService.getAuthenticatedUser();
+
         PostDomain existingPost = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
 
         boolean isOwner = existingPost.getUserId().equals(currentUser.getId());
         boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+
         if (!isOwner && !isAdmin) {
             throw new AccessDeniedException("No tiene permisos para actualizar esta publicación.");
         }
@@ -104,10 +104,18 @@ public class PostDomainService {
         existingPost.setContent(request.getContent());
         existingPost.setMultimediaContent(request.getMultimediaContent());
         existingPost.setPostDate(LocalDateTime.now());
+
         PostDomain updatedPost = postRepository.save(existingPost);
-        notificationPublisher.publishNotification(currentUser.getId(),
-                "Se ha actualizado su post",
-                "post");
+
+        // Notificar solo si el usuario es el propietario (evitar notificación duplicada si es admin)
+        if (isOwner) {
+            notificationService.sendNotification(
+                    currentUser.getId(),
+                    "Se ha actualizado tu publicación.",
+                    "post"
+            );
+        }
+
         return updatedPost;
     }
 
@@ -121,18 +129,25 @@ public class PostDomainService {
     @Transactional
     public void deletePost(Integer id) {
         UserDomain currentUser = sharedService.getAuthenticatedUser();
+
         PostDomain post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
 
         boolean isOwner = post.getUserId().equals(currentUser.getId());
         boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+
         if (!isOwner && !isAdmin) {
             throw new AccessDeniedException("No tiene permisos para eliminar esta publicación.");
         }
+
         postRepository.deleteById(id);
-        notificationPublisher.publishNotification(currentUser.getId(),
-                "Su post ha sido eliminado",
-                "post");
+
+        // Notificar al propietario del post (aunque sea eliminado por un admin)
+        notificationService.sendNotification(
+                post.getUserId(),
+                "Tu publicación ha sido eliminada.",
+                "post"
+        );
     }
 
     /**
@@ -161,6 +176,8 @@ public class PostDomainService {
      * @return Lista de DTOs.
      */
     public List<PostResponseDTO> toResponseList(List<PostDomain> posts) {
-        return posts.stream().map(this::toResponse).collect(Collectors.toList());
+        return posts.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 }

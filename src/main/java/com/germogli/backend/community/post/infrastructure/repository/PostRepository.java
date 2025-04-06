@@ -110,4 +110,25 @@ public class PostRepository implements PostDomainRepository {
         query.setParameter("p_post_id", id);
         query.execute();
     }
+    /**
+     * Obtiene el userId (autor) de un post mediante sp_get_post_owner.
+     *
+     * @param postId ID del post del cual se desea obtener el autor.
+     * @return El ID del usuario que creó el post.
+     *
+     */
+    @Override
+    @Transactional
+    public Integer findOwnerIdByPostId(Integer postId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_post_owner");
+        query.registerStoredProcedureParameter("p_post_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.OUT);
+
+        query.setParameter("p_post_id", postId);
+        query.execute();
+
+        Integer ownerId = (Integer) query.getOutputParameterValue("p_user_id");
+
+        return ownerId;
+    }
 }
