@@ -1,7 +1,7 @@
 package com.germogli.backend.education.guides.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.common.azure.service.AzureBlobStorageService;
+import com.germogli.backend.common.azure.AzureBlobStorageService;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.common.notification.NotificationPublisher;

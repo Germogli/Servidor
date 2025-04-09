@@ -1,4 +1,4 @@
-package com.germogli.backend.common.azure.config;
+package com.germogli.backend.common.config;
 
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;

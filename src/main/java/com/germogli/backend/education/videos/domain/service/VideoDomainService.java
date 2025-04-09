@@ -4,6 +4,7 @@ import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.common.notification.NotificationPublisher;
+import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
 import com.germogli.backend.education.videos.application.dto.CreateVideoRequestDTO;
@@ -29,7 +30,7 @@ public class VideoDomainService {
     private final VideoDomainRepository videoDomainRepository;
     private final ModuleDomainService moduleDomainService;
     private final EducationSharedService educationSharedService;
-    private final NotificationPublisher notificationPublisher;    // Servicio para enviar notificaciones a través de WebSockets
+    private final NotificationService notificationService;    // Servicio para enviar notificaciones a través de WebSockets
 
     /**
      * Crea un nuevo video educativo.
@@ -74,7 +75,7 @@ public class VideoDomainService {
         String moduleName = moduleDomainService.getModuleById(dto.getModuleId()).getTitle();
 
         // Enviar notificación WebSocket después de crear el video
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha creado un nuevo video: " + createdVideo.getTitle() + " en el módulo " + moduleName,
                 "education_video"
@@ -169,7 +170,7 @@ public class VideoDomainService {
         String moduloInfo = !moduleName.isEmpty() ? " en el módulo " + moduleName : "";
 
         // Enviar notificación WebSocket después de actualizar el video
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha actualizado el video: " + dto.getTitle() + moduloInfo,
                 "education_video"
@@ -209,7 +210,7 @@ public class VideoDomainService {
         String moduloInfo = !moduleName.isEmpty() ? " del módulo " + moduleName : "";
 
         // Enviar notificación WebSocket antes de eliminar el video
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha eliminado el video: " + video.getTitle() + moduloInfo,
                 "education_video"
