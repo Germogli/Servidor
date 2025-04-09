@@ -1,10 +1,10 @@
 package com.germogli.backend.education.guides.domain.service;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
-import com.germogli.backend.common.azure.service.AzureBlobStorageService;
+import com.germogli.backend.common.azure.AzureBlobStorageService;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
-import com.germogli.backend.common.notification.NotificationPublisher;
+import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.guides.application.dto.CreateGuideRequestDTO;
 import com.germogli.backend.education.guides.application.dto.GuideResponseDTO;
@@ -32,7 +32,7 @@ public class GuideDomainService {
     private final ModuleDomainService moduleDomainService; // Servicio para gestionar los módulos educativos
     private final AzureBlobStorageService azureBlobStorageService; // Servicio para interactuar con Azure Blob Storage
     private final EducationSharedService educationSharedService; // Servicio compartido para funciones comunes relacionadas con la educación
-    private final NotificationPublisher notificationPublisher;    // Servicio para enviar notificaciones a través de WebSockets
+    private final NotificationService notificationService;    // Servicio para enviar notificaciones a través de WebSockets
 
     /**
      * Elimina una guía educativa: primero elimina el archivo en Azure Blob Storage y luego la guía en la base de datos.
@@ -62,7 +62,7 @@ public class GuideDomainService {
 
         // Enviar notificación WebSocket después de eliminar la guía
         Integer moduleId = guide.getModuleId() != null ? guide.getModuleId().getModuleId() : null;
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha eliminado la guía: " + guide.getTitle() + " del módulo educativo",
                 "education_guide"
@@ -109,7 +109,7 @@ public class GuideDomainService {
 
         // Enviar notificación WebSocket después de actualizar la guía
         String moduloInfo = module != null ? " del módulo " + module.getTitle() : "";
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha actualizado la guía: " + updatedGuide.getTitle() + moduloInfo,
                 "education_guide"
@@ -192,7 +192,7 @@ public class GuideDomainService {
             GuideDomain createdGuide = guideDomainRepository.createGuide(guideDomain);
 
             // Enviar notificación WebSocket después de crear la guía
-            notificationPublisher.publishNotification(
+            notificationService.sendNotification(
                     currentUser.getId(),
                     "Se ha creado una nueva guía: " + createdGuide.getTitle() + " en el módulo " + module.getTitle(),
                     "education_guide"

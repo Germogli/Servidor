@@ -3,7 +3,7 @@ package com.germogli.backend.education.articles.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
-import com.germogli.backend.common.notification.NotificationPublisher;
+import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.education.articles.application.dto.ArticleResponseDTO;
 import com.germogli.backend.education.articles.application.dto.CreateArticleRequestDTO;
 import com.germogli.backend.education.articles.application.dto.UpdateArticleRequestDTO;
@@ -27,7 +27,7 @@ public class ArticleDomainService {
     private final ArticleDomainRepository articleDomainRepository;
     private final ModuleDomainService moduleDomainService;
     private final EducationSharedService educationSharedService;
-    private final NotificationPublisher notificationPublisher;
+    private final NotificationService notificationService;
 
     /**
      * Crea un nuevo artículo educativo.
@@ -74,7 +74,7 @@ public class ArticleDomainService {
         String moduleName = moduleDomainService.getModuleById(dto.getModuleId()).getTitle();
 
         // Enviar notificación WebSocket después de crear el artículo
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha creado un nuevo artículo: " + createdArticle.getTitle() + " en el módulo " + moduleName,
                 "education_article"
@@ -160,7 +160,7 @@ public class ArticleDomainService {
         String moduloInfo = !moduleName.isEmpty() ? " en el módulo " + moduleName : "";
 
         // Enviar notificación WebSocket después de actualizar el artículo
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha actualizado el artículo: " + dto.getTitle() + moduloInfo,
                 "education_article"
@@ -227,7 +227,7 @@ public class ArticleDomainService {
         String moduloInfo = !moduleName.isEmpty() ? " del módulo " + moduleName : "";
 
         // Enviar notificación WebSocket antes de eliminar el artículo
-        notificationPublisher.publishNotification(
+        notificationService.sendNotification(
                 currentUser.getId(),
                 "Se ha eliminado el artículo: " + article.getTitle() + moduloInfo,
                 "education_article"
