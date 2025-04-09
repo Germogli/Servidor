@@ -3,7 +3,6 @@ package com.germogli.backend.education.videos.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
-import com.germogli.backend.common.notification.NotificationPublisher;
 import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.education.domain.service.EducationSharedService;
 import com.germogli.backend.education.module.domain.service.ModuleDomainService;
