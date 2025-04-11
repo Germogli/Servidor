@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
 /**
@@ -26,14 +28,20 @@ public class PostController {
     private final PostDomainService postDomainService;
 
     /**
-     * Endpoint para crear una nueva publicación.
+     * Endpoint para crear una nueva publicación que admite archivo opcional.
+     * Si se adjunta un archivo (foto o video), se sube a Azure Blob Storage en el contenedor "publicaciones"
+     * y se almacena la URL generada en el campo multimediaContent.
      *
-     * @param request DTO con los datos para crear el post.
-     * @return Respuesta API con el post creado.
+     * @param postRequest Objeto JSON con los datos de la publicación.
+     * @param file Archivo opcional (foto o video).
+     * @return Respuesta API con la publicación creada.
      */
-    @PostMapping
-    public ResponseEntity<ApiResponseDTO<PostResponseDTO>> createPost(@Valid @RequestBody CreatePostRequestDTO request) {
-        PostDomain post = postDomainService.createPost(request);
+    @PostMapping(consumes = {"multipart/form-data"})
+    public ResponseEntity<ApiResponseDTO<PostResponseDTO>> createPost(
+            @RequestPart("post") @Valid CreatePostRequestDTO postRequest,
+            @RequestPart(name = "file", required = false) MultipartFile file) {
+
+        PostDomain post = postDomainService.createPost(postRequest, file);
         return ResponseEntity.ok(ApiResponseDTO.<PostResponseDTO>builder()
                 .message("Publicación creada correctamente")
                 .data(postDomainService.toResponse(post))
@@ -71,8 +79,9 @@ public class PostController {
 
     /**
      * Endpoint para actualizar una publicación.
+     * Solo el propietario o un administrador pueden actualizar el post.
      *
-     * @param id      Identificador del post a actualizar.
+     * @param id Identificador del post a actualizar.
      * @param request DTO con los datos a actualizar.
      * @return Respuesta API con el post actualizado.
      */
@@ -89,6 +98,8 @@ public class PostController {
 
     /**
      * Endpoint para eliminar una publicación.
+     * Solo el propietario o un administrador pueden eliminar el post.
+     * Además, si la publicación tiene contenido multimedia, se elimina el archivo del contenedor "publicaciones" en Azure Blob Storage.
      *
      * @param id Identificador del post a eliminar.
      * @return Respuesta API confirmando la eliminación.

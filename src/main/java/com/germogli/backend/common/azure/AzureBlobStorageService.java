@@ -25,9 +25,9 @@ public class AzureBlobStorageService {
     /**
      * Genera un token SAS para un archivo específico.
      *
-     * @param containerName Nombre del contenedor
-     * @param blobName Nombre del blob
-     * @param expirationMinutes Tiempo de expiración del token en minutos
+     * @param containerName      Nombre del contenedor
+     * @param blobName           Nombre del blob
+     * @param expirationMinutes  Tiempo de expiración del token en minutos
      * @return URL firmada para acceso temporal
      */
     public String generateSasToken(String containerName, String blobName, int expirationMinutes) {
@@ -59,9 +59,9 @@ public class AzureBlobStorageService {
      * Sube un archivo a un contenedor en Azure Blob Storage.
      *
      * @param containerName Nombre del contenedor donde se almacenará el archivo.
-     * @param blobName Nombre del archivo (blob) dentro del contenedor.
-     * @param data Flujo de entrada (InputStream) con los datos del archivo.
-     * @param length Tamaño del archivo en bytes.
+     * @param blobName      Nombre del archivo (blob) dentro del contenedor.
+     * @param data          Flujo de entrada (InputStream) con los datos del archivo.
+     * @param length        Tamaño del archivo en bytes.
      */
     public void uploadFile(String containerName, String blobName, InputStream data, long length) {
         // Obtiene o crea el contenedor
@@ -76,7 +76,7 @@ public class AzureBlobStorageService {
      * Elimina un archivo (blob) de un contenedor en Azure Blob Storage.
      *
      * @param containerName Nombre del contenedor.
-     * @param blobName Nombre del archivo (blob) a eliminar.
+     * @param blobName      Nombre del archivo (blob) a eliminar.
      */
     public void deleteBlob(String containerName, String blobName) {
         // Obtiene el contenedor
@@ -101,5 +101,18 @@ public class AzureBlobStorageService {
             containerClient.create();
         }
         return containerClient;
+    }
+
+    /**
+     * Obtiene la URL pública de un blob dado el nombre del contenedor y el nombre del blob.
+     *
+     * @param containerName Nombre del contenedor.
+     * @param blobName      Nombre del blob.
+     * @return URL del blob.
+     */
+    public String getBlobUrl(String containerName, String blobName) {
+        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+        BlobClient blobClient = containerClient.getBlobClient(blobName);
+        return blobClient.getBlobUrl();
     }
 }

@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class CreateGuideRequestDTO {
     private Integer moduleId;
     private String title;
-    private String description;
+    private String description; 
 
     /**
      * Archivo PDF que se sube en la solicitud.

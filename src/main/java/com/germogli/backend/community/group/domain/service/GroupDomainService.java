@@ -102,8 +102,9 @@ public class GroupDomainService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .build();
+        var currentUser = sharedService.getAuthenticatedUser();
         GroupDomain savedGroup = groupRepository.save(group);
-        notificationService.sendNotification(null,
+        notificationService.sendNotification(currentUser.getId(),
                 "Se ha creado un nuevo grupo: " + request.getName(),
                 "group");
         return savedGroup;
