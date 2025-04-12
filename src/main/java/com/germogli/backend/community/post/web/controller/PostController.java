@@ -7,6 +7,7 @@ import com.germogli.backend.community.post.application.dto.UpdatePostRequestDTO;
 import com.germogli.backend.community.post.domain.model.PostDomain;
 import com.germogli.backend.community.post.domain.service.PostDomainService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -32,16 +33,14 @@ public class PostController {
      * Si se adjunta un archivo (foto o video), se sube a Azure Blob Storage en el contenedor "publicaciones"
      * y se almacena la URL generada en el campo multimediaContent.
      *
-     * @param postRequest Objeto JSON con los datos de la publicación.
-     * @param file Archivo opcional (foto o video).
+     * @param postRequest Objeto con los datos de la publicación.
      * @return Respuesta API con la publicación creada.
      */
-    @PostMapping(consumes = {"multipart/form-data"})
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponseDTO<PostResponseDTO>> createPost(
-            @RequestPart("post") @Valid CreatePostRequestDTO postRequest,
-            @RequestPart(name = "file", required = false) MultipartFile file) {
+            @ModelAttribute @Valid CreatePostRequestDTO postRequest) {
 
-        PostDomain post = postDomainService.createPost(postRequest, file);
+        PostDomain post = postDomainService.createPost(postRequest);
         return ResponseEntity.ok(ApiResponseDTO.<PostResponseDTO>builder()
                 .message("Publicación creada correctamente")
                 .data(postDomainService.toResponse(post))
@@ -52,7 +51,7 @@ public class PostController {
      * Endpoint para obtener una publicación por su ID.
      *
      * @param id Identificador del post.
-     * @return Respuesta API con el post encontrado.
+     * @return Respuesta API con la publicación encontrada.
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<PostResponseDTO>> getPostById(@PathVariable Integer id) {
@@ -81,9 +80,9 @@ public class PostController {
      * Endpoint para actualizar una publicación.
      * Solo el propietario o un administrador pueden actualizar el post.
      *
-     * @param id Identificador del post a actualizar.
+     * @param id      Identificador del post a actualizar.
      * @param request DTO con los datos a actualizar.
-     * @return Respuesta API con el post actualizado.
+     * @return Respuesta API con la publicación actualizada.
      */
     @PutMapping("/{id}")
     @PreAuthorize("@postSecurity.canUpdate(#id, principal)")

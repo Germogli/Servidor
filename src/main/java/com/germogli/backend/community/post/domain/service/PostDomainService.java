@@ -40,24 +40,24 @@ public class PostDomainService {
      * y se almacena la URL obtenida en multimediaContent.
      *
      * @param request DTO con los datos para crear el post.
-     * @param file    Archivo opcional (foto o video).
      * @return Publicación creada.
      */
     @Transactional
-    public PostDomain createPost(CreatePostRequestDTO request, MultipartFile file) {
+    public PostDomain createPost(CreatePostRequestDTO request) {
         UserDomain currentUser = sharedService.getAuthenticatedUser();
-        // Valor por defecto, puede venir en el DTO (pero se sobreescribe si se envía un archivo)
+        // Valor inicial: se toma el valor que venga en el DTO (o vacío)
         String multimediaUrl = request.getMultimediaContent();
 
+        // Procesar el archivo si se envía
+        MultipartFile file = request.getFile();
         if (file != null && !file.isEmpty()) {
             try {
-                // Generar nombre único para el archivo (ejemplo: "userId_timestamp_nombreOriginal")
+                // Generar un nombre único para el archivo (por ejemplo: "userId_timestamp_nombreOriginal")
                 String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
                 // Subir el archivo al contenedor "publicaciones"
                 azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
-                // Obtener la URL segura del blob; se asume que generateSasToken devuelve la URL completa
-                // con un token SAS válido (por ejemplo, de 1440 minutos de duración)
-                multimediaUrl = azureBlobStorageService.generateSasToken("publicaciones", fileName, 1440);
+                // Recuperar la URL permanente del blob (no se usa SAS token para este caso)
+                multimediaUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
             } catch (IOException e) {
                 throw new RuntimeException("Error al subir el archivo a Azure Blob Storage", e);
             }
@@ -105,8 +105,7 @@ public class PostDomainService {
     /**
      * Actualiza una publicación.
      * Solo el propietario o un administrador pueden actualizar el post.
-     * En este método se actualizan únicamente los campos textuales; la actualización de multimedia
-     * se asume que se hace en otra operación o mediante el DTO (sin archivo).
+     * Se actualizan únicamente los campos textuales; la actualización de multimedia se asume que se hace en otra operación.
      *
      * @param id      Identificador del post a actualizar.
      * @param request DTO con los datos a actualizar.
@@ -127,14 +126,24 @@ public class PostDomainService {
 
         existingPost.setPostType(request.getPostType());
         existingPost.setContent(request.getContent());
+        // Se actualiza el campo multimediaContent según lo enviado en el DTO (sin archivo)
         existingPost.setMultimediaContent(request.getMultimediaContent());
         existingPost.setPostDate(LocalDateTime.now());
+
         PostDomain updatedPost = postRepository.save(existingPost);
 
         if (isOwner) {
-            notificationService.sendNotification(currentUser.getId(), "Se ha actualizado tu publicación.", "post");
+            notificationService.sendNotification(
+                    currentUser.getId(),
+                    "Se ha actualizado tu publicación.",
+                    "post"
+            );
         } else {
-            notificationService.sendNotification(existingPost.getUserId(), "Tu publicación ha sido actualizada por un administrador.", "post");
+            notificationService.sendNotification(
+                    existingPost.getUserId(),
+                    "Tu publicación ha sido actualizada por un administrador.",
+                    "post"
+            );
         }
 
         return updatedPost;
@@ -143,8 +152,7 @@ public class PostDomainService {
     /**
      * Elimina una publicación.
      * Solo el propietario o un administrador pueden eliminar el post.
-     * Además, si la publicación tiene contenido multimedia, se elimina el archivo correspondiente
-     * del contenedor "publicaciones" en Azure Blob Storage.
+     * Además, si la publicación tiene contenido multimedia, se elimina el archivo del contenedor "publicaciones" en Azure Blob Storage.
      *
      * @param id Identificador del post a eliminar.
      * @throws AccessDeniedException si el usuario no tiene permisos.
@@ -161,14 +169,18 @@ public class PostDomainService {
             throw new AccessDeniedException("No tiene permisos para eliminar esta publicación.");
         }
 
-        // Si hay contenido multimedia, eliminar el archivo correspondiente del contenedor "publicaciones"
+        // Si hay contenido multimedia, eliminar el archivo del contenedor "publicaciones"
         if (post.getMultimediaContent() != null && !post.getMultimediaContent().trim().isEmpty()) {
             String blobName = extractBlobNameFromUrl(post.getMultimediaContent());
             azureBlobStorageService.deleteBlob("publicaciones", blobName);
         }
 
         postRepository.deleteById(id);
-        notificationService.sendNotification(post.getUserId(), "Tu publicación ha sido eliminada.", "post");
+        notificationService.sendNotification(
+                post.getUserId(),
+                "Tu publicación ha sido eliminada.",
+                "post"
+        );
     }
 
     /**

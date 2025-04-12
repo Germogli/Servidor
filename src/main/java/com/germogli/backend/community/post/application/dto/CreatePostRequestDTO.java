@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * DTO para la creación de una publicación en la comunidad.
@@ -29,4 +30,5 @@ public class CreatePostRequestDTO {
     private String multimediaContent;
     private Integer groupId;
     private Integer threadId;
+    private MultipartFile file;
 }
