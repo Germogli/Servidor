@@ -82,6 +82,10 @@ public class AuthService {
             throw new UserAlreadyExistsException("El usuario " + request.getUsername() + " ya existe.");
         }
 
+        if(userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new UserAlreadyExistsException("El correo " + request.getEmail() + " ya se encuentra registrado en la plataforma.");
+        }
+
         // Asigna el rol por defecto "COMUN"
         Role defaultRole = Role.builder()
                 .id(4)
