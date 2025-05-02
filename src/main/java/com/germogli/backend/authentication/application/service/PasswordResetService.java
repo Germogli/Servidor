@@ -40,7 +40,8 @@ public class PasswordResetService {
         tokenRepository.save(resetToken);
 
         // Construir el enlace para restablecer la contraseña
-        String resetUrl = "http://tusitio.com/reset-password?token=" + token;
+        // Cambiar URL cuando se encuentre desplegado
+        String resetUrl = "http://localhost:5173/reset-password?token=" + token;
         String subject = "Recuperación de Contraseña";
         String text = "Hola " + user.getUsername() + ",\n\n" +
                 "Para restablecer tu contraseña, haz clic en el siguiente enlace:\n" +
