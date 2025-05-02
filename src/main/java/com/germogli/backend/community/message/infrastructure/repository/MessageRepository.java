@@ -10,6 +10,8 @@ import jakarta.persistence.StoredProcedureQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -34,20 +36,31 @@ public class MessageRepository implements MessageDomainRepository {
     public MessageDomain save(MessageDomain message) {
         if (message.getId() == null) {
             // Crear mensaje mediante sp_create_message
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_message", MessageEntity.class);
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_message");
             query.registerStoredProcedureParameter("p_post_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_content", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_thread_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_group_id", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_message_id", Integer.class, ParameterMode.OUT); // Añadir parámetro de salida
+
             query.setParameter("p_post_id", message.getPostId());
             query.setParameter("p_user_id", message.getUserId());
             query.setParameter("p_content", message.getContent());
             query.setParameter("p_thread_id", message.getThreadId());
             query.setParameter("p_group_id", message.getGroupId());
+
             query.execute();
+
+            // Obtener el ID generado
+            Integer messageId = (Integer) query.getOutputParameterValue("p_message_id");
+            message.setId(messageId);
+
+            // Establecer la fecha de creación (si la base de datos la establece automáticamente)
+            message.setCreationDate(LocalDateTime.now());
+
             return message;
-        } else {
+        }else {
             // Actualizar mensaje mediante sp_update_message
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_message", MessageEntity.class);
             query.registerStoredProcedureParameter("p_message_id", Integer.class, ParameterMode.IN);

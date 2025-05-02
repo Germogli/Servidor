@@ -95,5 +95,15 @@ public class GlobalException {
                 HttpStatus.INTERNAL_SERVER_ERROR
         );
     }
+    @ExceptionHandler(MessageDeliveryException.class)
+    public ResponseEntity<ApiResponseDTO<String>> handleMessageDeliveryException(MessageDeliveryException ex) {
+        return new ResponseEntity<>(
+                ApiResponseDTO.<String>builder()
+                        .message("Error al entregar mensaje: " + ex.getMessage())
+                        .data(null)
+                        .build(),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
 
 }
