@@ -40,15 +40,26 @@ public class MessageHistoryController {
             @RequestParam(defaultValue = "50") int limit,
             @RequestParam(defaultValue = "0") int offset) {
 
-        log.info("Solicitando historial de mensajes para {}: {}, limit: {}, offset: {}",
+        log.info("Recibida petición de historial para {}: {}, limit: {}, offset: {}",
                 contextType, contextId, limit, offset);
 
-        List<MessageResponseDTO> messages = messageChatService.getMessagesByContext(
-                contextType, contextId, limit, offset);
+        try {
+            List<MessageResponseDTO> messages = messageChatService.getMessagesByContext(
+                    contextType, contextId, limit, offset);
 
-        return ResponseEntity.ok(ApiResponseDTO.<List<MessageResponseDTO>>builder()
-                .message("Historial de mensajes recuperado correctamente")
-                .data(messages)
-                .build());
+            log.info("Recuperados {} mensajes del historial", messages.size());
+
+            return ResponseEntity.ok(ApiResponseDTO.<List<MessageResponseDTO>>builder()
+                    .message("Historial de mensajes recuperado correctamente")
+                    .data(messages)
+                    .build());
+        } catch (Exception e) {
+            log.error("Error al recuperar mensajes: ", e);
+            throw e;
+        }
+    }
+    @GetMapping("/test")
+    public ResponseEntity<String> testEndpoint() {
+        return ResponseEntity.ok("MessageHistoryController está funcionando correctamente");
     }
 }
