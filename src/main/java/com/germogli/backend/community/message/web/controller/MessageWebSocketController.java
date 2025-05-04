@@ -13,19 +13,26 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
 
 /**
  * Controlador WebSocket para la gestión de mensajes en tiempo real.
- * Maneja los mensajes recibidos por WebSocket y los distribuye a los tópicos correspondientes.
+ * <p>
+ * Implementa verificaciones de autenticación programáticas en lugar de
+ * depender exclusivamente de anotaciones declarativas.
+ *
+ * @author [Tu nombre]
+ * @version 3.0
+ * @since 2025-05-04
  */
 @Controller
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("isAuthenticated()")
 public class MessageWebSocketController {
 
     private final MessageDomainService messageDomainService;
@@ -33,13 +40,23 @@ public class MessageWebSocketController {
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
-     * Maneja mensajes enviados a grupos específicos.
-     *
-     * @param groupId ID del grupo
-     * @param message Mensaje enviado
+     * Verifica programáticamente si el usuario está autenticado.
+     * @throws AccessDeniedException si el usuario no está autenticado
      */
+    private void checkAuthentication() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
+            log.error("Usuario no autenticado intentando enviar mensaje");
+            throw new AccessDeniedException("Usuario no autenticado");
+        }
+        log.debug("Usuario autenticado: {}", auth.getName());
+    }
+
     @MessageMapping("/message/group/{groupId}")
     public void handleGroupMessage(@DestinationVariable Integer groupId, @Payload MessageWebSocketDTO message) {
+        // Verificación manual de autenticación
+        checkAuthentication();
+
         log.info("Recibido mensaje para grupo: {}, contenido: {}", groupId, message.getContent());
         UserDomain currentUser = sharedService.getAuthenticatedUser();
 
@@ -63,10 +80,9 @@ public class MessageWebSocketController {
             log.info("Mensaje enviado correctamente");
         } catch (Exception e) {
             log.error("Error al procesar mensaje de grupo: {}", e.getMessage(), e);
-            throw new MessageDeliveryException("Error al entregar mensaje al grupo: " + e.getMessage(), e);
+            throw e;
         }
     }
-
     /**
      * Maneja mensajes enviados a hilos específicos.
      *
