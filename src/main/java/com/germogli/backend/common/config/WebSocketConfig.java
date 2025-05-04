@@ -1,18 +1,36 @@
 package com.germogli.backend.common.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.web.socket.config.annotation.*;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
  * Configuración para habilitar y personalizar el uso de WebSockets con STOMP.
  * Se utiliza para permitir la comunicación en tiempo real en la aplicación.
+ * <p>
+ * Esta versión mejorada incluye un interceptor para propagar la autenticación
+ * al SecurityContext durante el procesamiento de mensajes, resolviendo problemas
+ * con anotaciones @PreAuthorize en los controladores de mensajería.
+ *
+ * @author [Tu nombre]
+ * @version 1.1
+ * @since 2025-05-04
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    @Autowired
+    private WebSocketAuthInterceptor webSocketAuthInterceptor;
+
+    @Autowired
+    private AuthenticationChannelInterceptor authenticationChannelInterceptor;
 
     /**
      * Configura el broker de mensajes para la aplicación.
@@ -24,7 +42,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // Habilita un broker simple para destinos que comiencen con "/topic"
-        config.enableSimpleBroker("/topic")
+        config.enableSimpleBroker("/topic", "/queue")
                 .setHeartbeatValue(new long[] {10000, 10000}) // 10 segundos para cliente y servidor
                 .setTaskScheduler(taskScheduler()); // Programador de tareas para heartbeats
 
@@ -48,23 +66,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     /**
-     * Configura las opciones del cliente STOMP para la aplicación.
+     * Configura las opciones del cliente STOMP para la aplicación, incluyendo
+     * los interceptores para autenticación y propagación del contexto de seguridad.
      *
-     * @param registry Registro de opciones del cliente STOMP.
+     * @param registration Registro de opciones del canal de entrada STOMP.
      */
     @Override
-    public void configureClientInboundChannel(org.springframework.messaging.simp.config.ChannelRegistration registration) {
-        registration.interceptors(webSocketAuthInterceptor());
-    }
-
-    /**
-     * Crea un interceptor para autenticar las conexiones WebSocket.
-     *
-     * @return Interceptor de autenticación
-     */
-    @Bean
-    public WebSocketAuthInterceptor webSocketAuthInterceptor() {
-        return new WebSocketAuthInterceptor();
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        // El orden es importante: AuthenticationChannelInterceptor debe ejecutarse después
+        // de WebSocketAuthInterceptor para usar la autenticación establecida
+        registration.interceptors(webSocketAuthInterceptor);
+        registration.interceptors(authenticationChannelInterceptor);
     }
 
     /**
