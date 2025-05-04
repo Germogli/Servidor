@@ -24,14 +24,15 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MessageChatService {
 
-    private final MessageDomainService messageDomainService;
     private final MessageDomainRepository messageRepository;
     private final MessageContextRepository messageContextRepository;
-    private final CommunitySharedService sharedService;
+    private final MessageDomainService messageDomainService;
     private final MessageCache messageCache;
 
     /**
      * Obtiene mensajes históricos para un contexto específico.
+     * Intenta primero obtener los mensajes desde la caché para mejorar el rendimiento.
+     * Si no hay datos en caché, consulta la base de datos.
      *
      * @param contextType Tipo de contexto (group, thread, post, forum)
      * @param contextId   ID del contexto
@@ -44,52 +45,42 @@ public class MessageChatService {
         log.info("Buscando mensajes para contexto: {}, ID: {}, limit: {}, offset: {}",
                 contextType, contextId, limit, offset);
 
-        // Intentar obtener mensajes desde la caché para solicitudes iniciales
-        if (offset == 0 && limit <= 50) {
-            List<MessageResponseDTO> cachedMessages = messageCache.getRecentMessages(contextType, contextId, limit);
-            if (!cachedMessages.isEmpty()) {
-                log.info("Devolviendo {} mensajes desde caché", cachedMessages.size());
-                return cachedMessages;
+        try {
+            // Intentar obtener mensajes desde la caché para solicitudes iniciales
+            if (offset == 0 && limit <= 50) {
+                List<MessageResponseDTO> cachedMessages = messageCache.getRecentMessages(contextType, contextId, limit);
+                if (!cachedMessages.isEmpty()) {
+                    log.info("Devolviendo {} mensajes desde caché", cachedMessages.size());
+                    return cachedMessages;
+                }
             }
+
+            // Si no hay en caché o se solicitan más mensajes, obtener de la base de datos
+            List<MessageDomain> messageDomains = messageContextRepository.findMessagesByContext(
+                    contextType, contextId, limit, offset);
+
+            log.info("Recuperados {} mensajes de la base de datos", messageDomains.size());
+
+            // Convertir a DTOs
+            List<MessageResponseDTO> messages = messageDomains.stream()
+                    .map(messageDomainService::toResponse)
+                    .collect(Collectors.toList());
+
+            // Si es la primera página, actualizar caché
+            if (offset == 0 && !messages.isEmpty()) {
+                messages.forEach(msg -> messageCache.addMessage(contextType, contextId, msg));
+                log.debug("Caché actualizada con {} mensajes", messages.size());
+            }
+
+            return messages;
+        } catch (Exception e) {
+            log.error("Error al obtener mensajes por contexto: {}", e.getMessage(), e);
+            // Para propósitos de depuración, registrar detalles adicionales
+            if (e.getCause() != null) {
+                log.error("Causa subyacente: {}", e.getCause().getMessage());
+            }
+            // Propagar la excepción para que sea manejada por el controlador
+            throw e;
         }
-
-        // Si no hay en caché o se solicitan más mensajes, obtener de la base de datos
-        List<MessageDomain> messageDomains = messageContextRepository.findMessagesByContext(
-                contextType, contextId, limit, offset);
-
-        // Convertir a DTOs
-        List<MessageResponseDTO> messages = messageDomains.stream()
-                .map(messageDomainService::toResponse)
-                .collect(Collectors.toList());
-
-        // Si es la primera página, actualizar caché
-        if (offset == 0 && !messages.isEmpty()) {
-            messages.forEach(msg -> messageCache.addMessage(contextType, contextId, msg));
-        }
-
-        return messages;
-    }
-
-    /**
-     * Convierte un MessageDomain a MessageWebSocketDTO para envío por WebSocket.
-     *
-     * @param message  Mensaje de dominio
-     * @param username Nombre de usuario
-     * @param avatar   Avatar del usuario
-     * @return DTO para WebSocket
-     */
-    public MessageWebSocketDTO toWebSocketDTO(MessageDomain message, String username, String avatar) {
-        return MessageWebSocketDTO.builder()
-                .id(message.getId())
-                .userId(message.getUserId())
-                .username(username)
-                .userAvatar(avatar)
-                .content(message.getContent())
-                .postId(message.getPostId())
-                .threadId(message.getThreadId())
-                .groupId(message.getGroupId())
-                .timestamp(message.getCreationDate())
-                .messageType("CHAT")
-                .build();
     }
 }

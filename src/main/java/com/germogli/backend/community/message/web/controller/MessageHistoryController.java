@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -55,11 +56,12 @@ public class MessageHistoryController {
                     .build());
         } catch (Exception e) {
             log.error("Error al recuperar mensajes: ", e);
-            throw e;
+
+            // Proporcionar una respuesta vacía con un mensaje claro
+            return ResponseEntity.ok(ApiResponseDTO.<List<MessageResponseDTO>>builder()
+                    .message("No se pudo cargar el historial debido a un error interno: " + e.getMessage())
+                    .data(Collections.emptyList())
+                    .build());
         }
-    }
-    @GetMapping("/test")
-    public ResponseEntity<String> testEndpoint() {
-        return ResponseEntity.ok("MessageHistoryController está funcionando correctamente");
     }
 }
