@@ -16,6 +16,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
@@ -26,9 +27,6 @@ import java.time.LocalDateTime;
  * Implementa verificaciones de autenticación programáticas en lugar de
  * depender exclusivamente de anotaciones declarativas.
  *
- * @author [Tu nombre]
- * @version 3.0
- * @since 2025-05-04
  */
 @Controller
 @RequiredArgsConstructor
@@ -49,7 +47,12 @@ public class MessageWebSocketController {
             log.error("Usuario no autenticado intentando enviar mensaje");
             throw new AccessDeniedException("Usuario no autenticado");
         }
-        log.debug("Usuario autenticado: {}", auth.getName());
+
+        // Esto es opcional pero útil para depuración
+        if (auth.getPrincipal() instanceof UserDetails) {
+            UserDetails userDetails = (UserDetails) auth.getPrincipal();
+            log.debug("Usuario autenticado: {}", userDetails.getUsername());
+        }
     }
 
     @MessageMapping("/message/group/{groupId}")
