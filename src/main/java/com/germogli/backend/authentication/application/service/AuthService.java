@@ -66,7 +66,11 @@ public class AuthService {
         }
 
         // Se genera el token JWT usando el UserDetails del usuario.
-        String token = jwtService.getToken(userDomain.toUserDetails());
+        String token = jwtService.getTokenWithRole(
+                userDomain.toUserDetails(),
+                userDomain.getRole().getRoleType()
+        );
+
         return AuthResponseDTO.builder().token(token).build();
     }
 
@@ -113,7 +117,11 @@ public class AuthService {
         emailService.sendSimpleMessage(userDomain.getEmail(), subject, text);
 
         // Genera el token JWT para el usuario registrado.
-        String token = jwtService.getToken(userDomain.toUserDetails());
+        String token = jwtService.getTokenWithRole(
+                userDomain.toUserDetails(),
+                userDomain.getRole().getRoleType()
+        );
+
         return AuthResponseDTO.builder().token(token).build();
     }
 
@@ -160,7 +168,11 @@ public class AuthService {
         userRepository.save(userDomain);
 
         // Genera el token JWT para el administrador.
-        String token = jwtService.getToken(userDomain.toUserDetails());
+        String token = jwtService.getTokenWithRole(
+                userDomain.toUserDetails(),
+                userDomain.getRole().getRoleType()
+        );
+
         return AuthResponseDTO.builder().token(token).build();
     }
 }

@@ -33,6 +33,19 @@ public class JwtService {
     }
 
     /**
+     * Genera un token JWT incluyendo el rol del usuario.
+     *
+     * @param user UserDetails del usuario.
+     * @param roleType Tipo de rol del usuario.
+     * @return Token JWT con información de rol.
+     */
+    public String getTokenWithRole(UserDetails user, String roleType) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("role", roleType);
+        return getToken(extraClaims, user);
+    }
+
+    /**
      * Genera un token JWT con claims adicionales.
      *
      * @param extraClaims Claims adicionales.
@@ -68,6 +81,16 @@ public class JwtService {
      */
     public String getUsernameFromToken(String token) {
         return getClaim(token, Claims::getSubject);
+    }
+
+    /**
+     * Extrae el rol del token JWT.
+     *
+     * @param token Token JWT.
+     * @return Rol del usuario o null si no existe.
+     */
+    public String getRoleFromToken(String token) {
+        return getClaim(token, claims -> claims.get("role", String.class));
     }
 
     /**
