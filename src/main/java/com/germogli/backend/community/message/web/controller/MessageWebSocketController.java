@@ -16,11 +16,11 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 
-import java.security.Principal;
 import java.time.LocalDateTime;
 
 /**
@@ -37,26 +37,38 @@ public class MessageWebSocketController {
 
     /**
      * Verifica que el usuario esté autenticado correctamente.
+     * Implementa verificación explícita del SecurityContext.
      *
      * @param headerAccessor Acceso a headers STOMP para información adicional
      * @return La autenticación verificada
      * @throws AccessDeniedException si el usuario no está autenticado
      */
     private Authentication checkAuthentication(SimpMessageHeaderAccessor headerAccessor) {
-        // Intentar obtener autenticación del contexto de seguridad
+        // Obtener autenticación directamente del contexto de seguridad
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        // Si no está en el contexto, intentar obtenerla del mensaje
-        if ((auth == null || !auth.isAuthenticated()) && headerAccessor != null && headerAccessor.getUser() != null) {
+        // Loguear estado actual del contexto de seguridad
+        log.debug("Estado de SecurityContext al procesar mensaje: auth={}, principal={}",
+                auth != null,
+                auth != null ? auth.getPrincipal() : "null");
+
+        // Si no está en el contexto, intentar recuperarla del mensaje
+        if ((auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null)
+                && headerAccessor != null && headerAccessor.getUser() != null) {
+
+            log.debug("Autenticación no encontrada en SecurityContext, recuperando del mensaje");
             auth = (Authentication) headerAccessor.getUser();
-            // Restaurar en el contexto de seguridad
+
+            // Restaurar en el contexto de seguridad si se encuentra en mensaje
             SecurityContextHolder.getContext().setAuthentication(auth);
+            log.debug("Autenticación restaurada desde mensaje: {}", auth.getName());
         }
 
-        // Verificación final
+        // Verificación final - lanzar excepción si no está autenticado
         if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-            log.error("Usuario no autenticado intentando enviar mensaje");
-            throw new AccessDeniedException("Usuario no autenticado");
+            log.error("⚠️ Usuario no autenticado intentando enviar mensaje");
+            throw new AuthenticationCredentialsNotFoundException(
+                    "No se encontró autenticación en el contexto de seguridad");
         }
 
         return auth;
@@ -74,12 +86,14 @@ public class MessageWebSocketController {
         log.info("Recibido mensaje para grupo: {}", groupId);
 
         try {
-            // Verificación de autenticación y obtención del objeto Authentication
+            // Verificación explícita de autenticación
             Authentication auth = checkAuthentication(headerAccessor);
             log.debug("Usuario autenticado correctamente: {}", auth.getName());
 
             // Obtener usuario completo del dominio usando el servicio compartido
             UserDomain currentUser = sharedService.getAuthenticatedUser();
+            log.debug("Usuario de dominio recuperado: ID={}, username={}",
+                    currentUser.getId(), currentUser.getUsername());
 
             // Enriquecer mensaje con datos del usuario
             enrichMessageWithUserData(message, currentUser);
@@ -102,7 +116,120 @@ public class MessageWebSocketController {
         }
     }
 
-    // Otros métodos para thread, post, etc.
+    /**
+     * Maneja mensajes enviados a hilos específicos.
+     */
+    @MessageMapping("/message/thread/{threadId}")
+    public void handleThreadMessage(
+            @DestinationVariable Integer threadId,
+            @Payload MessageWebSocketDTO message,
+            SimpMessageHeaderAccessor headerAccessor) {
+
+        log.info("Recibido mensaje para hilo: {}", threadId);
+
+        try {
+            // Verificación explícita de autenticación
+            Authentication auth = checkAuthentication(headerAccessor);
+            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+
+            // Obtener usuario completo del dominio
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+            // Enriquecer mensaje con datos del usuario
+            enrichMessageWithUserData(message, currentUser);
+            message.setThreadId(threadId);
+
+            // Persistir el mensaje
+            MessageDomain savedMessage = persistMessage(message, "thread");
+
+            // Preparar mensaje para envío
+            message.setId(savedMessage.getId());
+            message.setTimestamp(savedMessage.getCreationDate());
+
+            // Enviar mensaje al tópico del hilo
+            messagingTemplate.convertAndSend("/topic/message/thread/" + threadId, message);
+            log.debug("Mensaje enviado correctamente al hilo {}", threadId);
+
+        } catch (Exception e) {
+            handleMessageError(e, headerAccessor, "Error al procesar mensaje para hilo " + threadId);
+        }
+    }
+
+    /**
+     * Maneja mensajes enviados a publicaciones específicas.
+     */
+    @MessageMapping("/message/post/{postId}")
+    public void handlePostMessage(
+            @DestinationVariable Integer postId,
+            @Payload MessageWebSocketDTO message,
+            SimpMessageHeaderAccessor headerAccessor) {
+
+        log.info("Recibido mensaje para publicación: {}", postId);
+
+        try {
+            // Verificación explícita de autenticación
+            Authentication auth = checkAuthentication(headerAccessor);
+            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+
+            // Obtener usuario completo del dominio
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+            // Enriquecer mensaje con datos del usuario
+            enrichMessageWithUserData(message, currentUser);
+            message.setPostId(postId);
+
+            // Persistir el mensaje
+            MessageDomain savedMessage = persistMessage(message, "post");
+
+            // Preparar mensaje para envío
+            message.setId(savedMessage.getId());
+            message.setTimestamp(savedMessage.getCreationDate());
+
+            // Enviar mensaje al tópico de la publicación
+            messagingTemplate.convertAndSend("/topic/message/post/" + postId, message);
+            log.debug("Mensaje enviado correctamente a la publicación {}", postId);
+
+        } catch (Exception e) {
+            handleMessageError(e, headerAccessor, "Error al procesar mensaje para publicación " + postId);
+        }
+    }
+
+    /**
+     * Maneja mensajes enviados al foro general.
+     */
+    @MessageMapping("/message/forum")
+    public void handleForumMessage(
+            @Payload MessageWebSocketDTO message,
+            SimpMessageHeaderAccessor headerAccessor) {
+
+        log.info("Recibido mensaje para foro general");
+
+        try {
+            // Verificación explícita de autenticación
+            Authentication auth = checkAuthentication(headerAccessor);
+            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+
+            // Obtener usuario completo del dominio
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+            // Enriquecer mensaje con datos del usuario
+            enrichMessageWithUserData(message, currentUser);
+
+            // Persistir el mensaje
+            MessageDomain savedMessage = persistMessage(message, "forum");
+
+            // Preparar mensaje para envío
+            message.setId(savedMessage.getId());
+            message.setTimestamp(savedMessage.getCreationDate());
+
+            // Enviar mensaje al tópico del foro
+            messagingTemplate.convertAndSend("/topic/message/forum", message);
+            log.debug("Mensaje enviado correctamente al foro general");
+
+        } catch (Exception e) {
+            handleMessageError(e, headerAccessor, "Error al procesar mensaje para foro general");
+        }
+    }
 
     /**
      * Maneja errores durante el procesamiento de mensajes.
@@ -110,26 +237,51 @@ public class MessageWebSocketController {
     private void handleMessageError(Exception e, SimpMessageHeaderAccessor headerAccessor, String context) {
         log.error("{}: {}", context, e.getMessage(), e);
 
-        // Notificar al usuario del error si es posible determinar su session
+        // Notificar al usuario del error
         if (headerAccessor != null && headerAccessor.getSessionId() != null) {
             messagingTemplate.convertAndSendToUser(
                     headerAccessor.getSessionId(),
                     "/queue/errors",
-                    new ErrorResponse("Acceso denegado: No tiene permisos para esta operación",
-                            e instanceof AccessDeniedException ? "FORBIDDEN" : "SERVER_ERROR")
+                    new ErrorResponse(
+                            e instanceof AccessDeniedException || e instanceof AuthenticationCredentialsNotFoundException
+                                    ? "Error de autenticación: " + e.getMessage()
+                                    : "Error en el servidor: " + e.getMessage(),
+                            e instanceof AccessDeniedException ? "AUTH_ERROR" : "SERVER_ERROR"
+                    )
             );
         }
 
-        // Propagar excepción para que sea manejada por el controlador global
+        // Propagar excepción para ser manejada por el controlador global
         if (e instanceof AccessDeniedException) {
             throw (AccessDeniedException) e;
+        } else if (e instanceof AuthenticationCredentialsNotFoundException) {
+            throw (AuthenticationCredentialsNotFoundException) e;
         } else {
             throw new MessageDeliveryException(context + ": " + e.getMessage(), e);
         }
     }
 
     /**
-     * Clase de respuesta de error para el cliente
+     * Manejador global de excepciones para mensajes WebSocket.
+     */
+    @MessageExceptionHandler
+    public void handleException(Exception exception, SimpMessageHeaderAccessor headerAccessor) {
+        log.error("Error global en mensaje WebSocket: {}", exception.getMessage(), exception);
+
+        if (headerAccessor != null && headerAccessor.getSessionId() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    headerAccessor.getSessionId(),
+                    "/queue/errors",
+                    new ErrorResponse(
+                            "Error en procesamiento de mensaje: " + exception.getMessage(),
+                            "ERROR"
+                    )
+            );
+        }
+    }
+
+    /**
+     * Respuesta de error para el cliente.
      */
     private static class ErrorResponse {
         private final String message;
@@ -169,24 +321,5 @@ public class MessageWebSocketController {
                 .build();
 
         return messageDomainService.createMessage(createRequest);
-    }
-
-    /**
-     * Manejador global de excepciones para mensajes.
-     */
-    @MessageExceptionHandler
-    public void handleException(Exception exception, Principal principal) {
-        log.error("Error en mensaje WebSocket: {}", exception.getMessage(), exception);
-
-        if (principal != null) {
-            messagingTemplate.convertAndSendToUser(
-                    principal.getName(),
-                    "/queue/errors",
-                    new ErrorResponse(
-                            "Error: " + exception.getMessage(),
-                            exception instanceof AccessDeniedException ? "AUTH_ERROR" : "SERVER_ERROR"
-                    )
-            );
-        }
     }
 }

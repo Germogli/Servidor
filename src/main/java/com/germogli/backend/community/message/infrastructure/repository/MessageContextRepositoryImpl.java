@@ -17,7 +17,7 @@ import java.util.List;
  * utilizando procedimientos almacenados.
  */
 @Repository
-public class MessageContextRepositoryImpl implements MessageContextRepository {
+    public class    MessageContextRepositoryImpl implements MessageContextRepository {
 
     @PersistenceContext
     private EntityManager entityManager;

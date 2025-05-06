@@ -1,5 +1,6 @@
 package com.germogli.backend.common.config;
 
+import com.germogli.backend.common.security.WebSocketSecurityInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,13 +10,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
-import com.germogli.backend.common.security.WebSocketSecurityInterceptor;
-
 /**
- * Configuración para WebSockets que habilita el broker de mensajes y
- * registra los endpoints STOMP.
+ * Configuración optimizada de WebSockets con manejo mejorado de autenticación.
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -26,58 +25,76 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // Configurar broker de mensajes simple con heartbeat
+        // Configurar broker de mensajes con heartbeat optimizado
         registry.enableSimpleBroker("/topic", "/queue")
                 .setHeartbeatValue(new long[] {10000, 10000})
                 .setTaskScheduler(taskScheduler());
 
-        // Configurar prefijos para destinos de aplicación
+        // Prefijos para destinos de aplicación
         registry.setApplicationDestinationPrefixes("/app");
 
-        // Configurar prefijo para mensajes dirigidos a usuarios específicos
+        // Prefijo para mensajes dirigidos a usuarios específicos
         registry.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Registrar endpoint STOMP con SockJS fallback
+        // Endpoint STOMP con SockJS y configuración optimizada
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns("*") // SOLUCIÓN: Usar patterns en lugar de origins
                 .withSockJS()
                 .setHeartbeatTime(25000)
-                .setDisconnectDelay(30000);
+                .setDisconnectDelay(30000)
+                .setWebSocketEnabled(true)
+                .setSessionCookieNeeded(false);
     }
 
     /**
-     * Configuración crítica: Registro del interceptor de seguridad para
-     * canal de entrada de mensajes.
+     * IMPORTANTE: Aumentar límites de tamaño de mensaje para evitar
+     * problemas con tokens JWT grandes.
+     */
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registry) {
+        registry.setMessageSizeLimit(128 * 1024); // 128KB
+        registry.setSendBufferSizeLimit(512 * 1024); // 512KB
+        registry.setSendTimeLimit(20000); // 20 segundos
+    }
+
+    /**
+     * Configuración de interceptores para canal de entrada.
      */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(webSocketSecurityInterceptor);
+
+
+        // Configurar pool de hilos para mejor rendimiento
+        registration.taskExecutor()
+                .corePoolSize(4)
+                .maxPoolSize(10);
     }
 
     /**
-     * Proporciona un scheduler dedicado para tareas WebSocket.
+     * Scheduler dedicado para tareas WebSocket.
      */
     @Bean
     public ThreadPoolTaskScheduler taskScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(4);
-        scheduler.setThreadNamePrefix("ws-scheduler-");
+        scheduler.setThreadNamePrefix("ws-heartbeat-");
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         return scheduler;
     }
 
     /**
-     * Configuración del contenedor WebSocket para mejorar timeouts.
+     * Configuración optimizada del contenedor WebSocket.
      */
     @Bean
     public ServletServerContainerFactoryBean createWebSocketContainer() {
         ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
-        container.setMaxTextMessageBufferSize(8192);
-        container.setMaxBinaryMessageBufferSize(8192);
-        container.setMaxSessionIdleTimeout(60000L);
+        container.setMaxTextMessageBufferSize(64 * 1024); // 64KB
+        container.setMaxBinaryMessageBufferSize(64 * 1024); // 64KB
+        container.setMaxSessionIdleTimeout(120000L); // 2 minutos
         return container;
     }
 }

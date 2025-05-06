@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * para eliminar un mensaje.
  */
 @Component("messageSecurity")
-public class MessageSecurity {
+    public class MessageSecurity {
 
     private final MessageDomainService messageDomainService;
     private final CommunitySharedService sharedService;
