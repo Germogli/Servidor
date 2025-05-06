@@ -1,6 +1,7 @@
 package com.germogli.backend.common.security;
 
 import com.germogli.backend.authentication.infrastructure.security.JwtService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -8,7 +9,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,18 +18,15 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
-
 /**
- * Interceptor especial para WebSockets con máxima prioridad.
- * Garantiza que el SecurityContext esté siempre disponible para mensajes STOMP.
- * <p>
- * Esta implementación utiliza un enfoque directo para establecer la autenticación
- * en el SecurityContext del hilo actual, justo antes de que el controlador de mensajes
- * invoque el método anotado con @PreAuthorize.
+ * Interceptor de seguridad para WebSockets que garantiza la propagación
+ * correcta del contexto de autenticación.
  *
+ * @author Germogli Development Team
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@Slf4j
 public class WebSocketSecurityInterceptor implements ChannelInterceptor {
 
     @Autowired
@@ -40,51 +37,68 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        SimpMessageHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, SimpMessageHeaderAccessor.class);
 
-        if (accessor != null && accessor.getMessageType() == SimpMessageType.CONNECT) {
-            // Extraer token JWT del header de conexión
-            String authHeader = accessor.getFirstNativeHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                try {
-                    // Validar token y obtener nombre de usuario
+        if (accessor == null) {
+            return message;
+        }
+
+        // Registra el tipo de mensaje para depuración
+        SimpMessageType messageType = accessor.getMessageType();
+        if (log.isDebugEnabled()) {
+            log.debug("Procesando mensaje tipo {}, sessionId={}",
+                    messageType, accessor.getSessionId());
+        }
+
+        try {
+            // Para mensajes de tipo CONNECT, extraer token JWT y autenticar
+            if (SimpMessageType.CONNECT.equals(messageType)) {
+                String authHeader = accessor.getFirstNativeHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7);
                     String username = jwtService.getUsernameFromToken(token);
+
                     if (username != null) {
-                        // Obtener detalles de usuario
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                        // Verificar token válido
+
                         if (jwtService.isTokenValid(token, userDetails)) {
-                            // Crear autenticación
                             UsernamePasswordAuthenticationToken auth =
                                     new UsernamePasswordAuthenticationToken(
                                             userDetails, null, userDetails.getAuthorities());
 
-                            // Importante: Establecer la autenticación en el mensaje
+                            // Establecer en el mensaje y en el contexto actual
                             accessor.setUser(auth);
-
-                            // También establecer en SecurityContext actual para otros interceptores
                             SecurityContextHolder.getContext().setAuthentication(auth);
+
+                            log.debug("Usuario {} autenticado para WebSocket", username);
                         }
                     }
-                } catch (Exception e) {
-                    // Registrar error pero no interrumpir flujo
-                    // El error se manejará después en el controlador
                 }
             }
-        } else if (accessor != null && accessor.getUser() instanceof Authentication) {
-            // Para TODOS los mensajes no-CONNECT, restaurar la autenticación del usuario
-            // del mensaje al SecurityContext del hilo actual
-            Authentication auth = (Authentication) accessor.getUser();
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            // Para CUALQUIER tipo de mensaje (incluyendo SEND), propagar autenticación
+            else if (accessor.getUser() != null) {
+                // Recuperar autenticación del mensaje
+                Authentication auth = (Authentication) accessor.getUser();
+
+                // Restaurar en el contexto de seguridad actual
+                SecurityContextHolder.getContext().setAuthentication(auth);
+
+                if (log.isTraceEnabled()) {
+                    log.trace("Autenticación restaurada para usuario: {}",
+                            auth.getName());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error procesando autenticación WebSocket: {}", e.getMessage(), e);
         }
 
         return message;
     }
 
     @Override
-    public void afterSendCompletion(Message<?> message, MessageChannel channel, boolean sent, Exception ex) {
-        // Limpiar contexto después de procesar mensaje
+    public void afterSendCompletion(Message<?> message, MessageChannel channel,
+                                    boolean sent, Exception ex) {
+        // Limpiar contexto después para evitar fugas de memoria
         SecurityContextHolder.clearContext();
     }
 }

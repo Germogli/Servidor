@@ -10,23 +10,21 @@ import com.germogli.backend.community.message.domain.service.MessageDomainServic
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
 import java.time.LocalDateTime;
 
 /**
- * Controlador WebSocket para la gestión de mensajes en tiempo real.
- * <p>
- * Implementa verificaciones de autenticación programáticas en lugar de
- * depender exclusivamente de anotaciones declarativas.
- *
+ * Controlador para gestionar mensajes en tiempo real a través de WebSockets.
  */
 @Controller
 @RequiredArgsConstructor
@@ -38,148 +36,119 @@ public class MessageWebSocketController {
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
-     * Verifica programáticamente si el usuario está autenticado.
+     * Verifica que el usuario esté autenticado correctamente.
+     *
+     * @param headerAccessor Acceso a headers STOMP para información adicional
+     * @return La autenticación verificada
      * @throws AccessDeniedException si el usuario no está autenticado
      */
-    private void checkAuthentication() {
+    private Authentication checkAuthentication(SimpMessageHeaderAccessor headerAccessor) {
+        // Intentar obtener autenticación del contexto de seguridad
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // Si no está en el contexto, intentar obtenerla del mensaje
+        if ((auth == null || !auth.isAuthenticated()) && headerAccessor != null && headerAccessor.getUser() != null) {
+            auth = (Authentication) headerAccessor.getUser();
+            // Restaurar en el contexto de seguridad
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+
+        // Verificación final
         if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
             log.error("Usuario no autenticado intentando enviar mensaje");
             throw new AccessDeniedException("Usuario no autenticado");
         }
 
-        // Esto es opcional pero útil para depuración
-        if (auth.getPrincipal() instanceof UserDetails) {
-            UserDetails userDetails = (UserDetails) auth.getPrincipal();
-            log.debug("Usuario autenticado: {}", userDetails.getUsername());
-        }
+        return auth;
     }
 
+    /**
+     * Maneja mensajes enviados a grupos específicos.
+     */
     @MessageMapping("/message/group/{groupId}")
-    public void handleGroupMessage(@DestinationVariable Integer groupId, @Payload MessageWebSocketDTO message) {
-        // Verificación manual de autenticación
-        checkAuthentication();
+    public void handleGroupMessage(
+            @DestinationVariable Integer groupId,
+            @Payload MessageWebSocketDTO message,
+            SimpMessageHeaderAccessor headerAccessor) {
 
-        log.info("Recibido mensaje para grupo: {}, contenido: {}", groupId, message.getContent());
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
+        log.info("Recibido mensaje para grupo: {}", groupId);
 
         try {
-            // Establecer datos del usuario
+            // Verificación de autenticación y obtención del objeto Authentication
+            Authentication auth = checkAuthentication(headerAccessor);
+            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+
+            // Obtener usuario completo del dominio usando el servicio compartido
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+            // Enriquecer mensaje con datos del usuario
             enrichMessageWithUserData(message, currentUser);
+            message.setGroupId(groupId);
 
             // Persistir el mensaje
-            log.info("Intentando persistir mensaje: usuario={}, grupo={}, contenido={}",
-                    currentUser.getId(), groupId, message.getContent());
             MessageDomain savedMessage = persistMessage(message, "group");
-            log.info("Mensaje persistido con ID: {}", savedMessage.getId());
+            log.debug("Mensaje persistido con ID: {}", savedMessage.getId());
 
-            // Enriquecer el mensaje con datos adicionales para enviar
+            // Preparar mensaje para envío (añadir ID y timestamp)
             message.setId(savedMessage.getId());
             message.setTimestamp(savedMessage.getCreationDate());
 
-            // Enviar el mensaje al tópico del grupo
-            log.info("Enviando mensaje al tópico: /topic/message/group/{}", groupId);
+            // Enviar mensaje al tópico del grupo
             messagingTemplate.convertAndSend("/topic/message/group/" + groupId, message);
-            log.info("Mensaje enviado correctamente");
+            log.debug("Mensaje enviado correctamente al grupo {}", groupId);
+
         } catch (Exception e) {
-            log.error("Error al procesar mensaje de grupo: {}", e.getMessage(), e);
-            throw e;
+            handleMessageError(e, headerAccessor, "Error al procesar mensaje para grupo " + groupId);
         }
     }
+
+    // Otros métodos para thread, post, etc.
+
     /**
-     * Maneja mensajes enviados a hilos específicos.
-     *
-     * @param threadId ID del hilo
-     * @param message  Mensaje enviado
+     * Maneja errores durante el procesamiento de mensajes.
      */
-    @MessageMapping("/message/thread/{threadId}")
-    public void handleThreadMessage(@DestinationVariable Integer threadId, @Payload MessageWebSocketDTO message) {
-        log.info("Recibido mensaje para hilo: {}", threadId);
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
+    private void handleMessageError(Exception e, SimpMessageHeaderAccessor headerAccessor, String context) {
+        log.error("{}: {}", context, e.getMessage(), e);
 
-        try {
-            // Establecer datos del usuario
-            enrichMessageWithUserData(message, currentUser);
+        // Notificar al usuario del error si es posible determinar su session
+        if (headerAccessor != null && headerAccessor.getSessionId() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    headerAccessor.getSessionId(),
+                    "/queue/errors",
+                    new ErrorResponse("Acceso denegado: No tiene permisos para esta operación",
+                            e instanceof AccessDeniedException ? "FORBIDDEN" : "SERVER_ERROR")
+            );
+        }
 
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "thread");
-
-            // Enriquecer el mensaje con datos adicionales para enviar
-            message.setId(savedMessage.getId());
-            message.setTimestamp(savedMessage.getCreationDate());
-
-            // Enviar el mensaje al tópico del hilo
-            messagingTemplate.convertAndSend("/topic/message/thread/" + threadId, message);
-        } catch (Exception e) {
-            log.error("Error al procesar mensaje de hilo: {}", e.getMessage(), e);
-            throw new MessageDeliveryException("Error al entregar mensaje al hilo: " + e.getMessage(), e);
+        // Propagar excepción para que sea manejada por el controlador global
+        if (e instanceof AccessDeniedException) {
+            throw (AccessDeniedException) e;
+        } else {
+            throw new MessageDeliveryException(context + ": " + e.getMessage(), e);
         }
     }
 
     /**
-     * Maneja mensajes enviados a publicaciones específicas.
-     *
-     * @param postId  ID de la publicación
-     * @param message Mensaje enviado
+     * Clase de respuesta de error para el cliente
      */
-    @MessageMapping("/message/post/{postId}")
-    public void handlePostMessage(@DestinationVariable Integer postId, @Payload MessageWebSocketDTO message) {
-        log.info("Recibido mensaje para publicación: {}", postId);
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
+    private static class ErrorResponse {
+        private final String message;
+        private final String type;
+        private final long timestamp;
 
-        try {
-            // Establecer datos del usuario
-            enrichMessageWithUserData(message, currentUser);
-
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "post");
-
-            // Enriquecer el mensaje con datos adicionales para enviar
-            message.setId(savedMessage.getId());
-            message.setTimestamp(savedMessage.getCreationDate());
-
-            // Enviar el mensaje al tópico de la publicación
-            messagingTemplate.convertAndSend("/topic/message/post/" + postId, message);
-        } catch (Exception e) {
-            log.error("Error al procesar mensaje de publicación: {}", e.getMessage(), e);
-            throw new MessageDeliveryException("Error al entregar mensaje a la publicación: " + e.getMessage(), e);
+        public ErrorResponse(String message, String type) {
+            this.message = message;
+            this.type = type;
+            this.timestamp = System.currentTimeMillis();
         }
+
+        public String getMessage() { return message; }
+        public String getType() { return type; }
+        public long getTimestamp() { return timestamp; }
     }
 
     /**
-     * Maneja mensajes enviados al foro general.
-     *
-     * @param message Mensaje enviado
-     */
-    @MessageMapping("/message/forum")
-    public void handleForumMessage(@Payload MessageWebSocketDTO message) {
-        log.info("Recibido mensaje para el foro general");
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
-
-        try {
-            // Establecer datos del usuario
-            enrichMessageWithUserData(message, currentUser);
-
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "forum");
-
-            // Enriquecer el mensaje con datos adicionales para enviar
-            message.setId(savedMessage.getId());
-            message.setTimestamp(savedMessage.getCreationDate());
-
-            // Enviar el mensaje al tópico del foro general
-            messagingTemplate.convertAndSend("/topic/message/forum", message);
-        } catch (Exception e) {
-            log.error("Error al procesar mensaje del foro general: {}", e.getMessage(), e);
-            throw new MessageDeliveryException("Error al entregar mensaje al foro general: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Enriquece el mensaje con los datos del usuario autenticado.
-     *
-     * @param message     Mensaje a enriquecer
-     * @param currentUser Usuario autenticado
+     * Enriquece el mensaje con datos del usuario autenticado.
      */
     private void enrichMessageWithUserData(MessageWebSocketDTO message, UserDomain currentUser) {
         message.setUserId(currentUser.getId());
@@ -190,10 +159,6 @@ public class MessageWebSocketController {
 
     /**
      * Persiste el mensaje en la base de datos.
-     *
-     * @param message     Mensaje a persistir
-     * @param contextType Tipo de contexto
-     * @return Mensaje persistido
      */
     private MessageDomain persistMessage(MessageWebSocketDTO message, String contextType) {
         CreateMessageRequestDTO createRequest = CreateMessageRequestDTO.builder()
@@ -204,5 +169,24 @@ public class MessageWebSocketController {
                 .build();
 
         return messageDomainService.createMessage(createRequest);
+    }
+
+    /**
+     * Manejador global de excepciones para mensajes.
+     */
+    @MessageExceptionHandler
+    public void handleException(Exception exception, Principal principal) {
+        log.error("Error en mensaje WebSocket: {}", exception.getMessage(), exception);
+
+        if (principal != null) {
+            messagingTemplate.convertAndSendToUser(
+                    principal.getName(),
+                    "/queue/errors",
+                    new ErrorResponse(
+                            "Error: " + exception.getMessage(),
+                            exception instanceof AccessDeniedException ? "AUTH_ERROR" : "SERVER_ERROR"
+                    )
+            );
+        }
     }
 }

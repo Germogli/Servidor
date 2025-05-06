@@ -1,8 +1,6 @@
 package com.germogli.backend.community.message.domain.service;
 
-import com.germogli.backend.community.domain.service.CommunitySharedService;
 import com.germogli.backend.community.message.application.dto.MessageResponseDTO;
-import com.germogli.backend.community.message.application.dto.MessageWebSocketDTO;
 import com.germogli.backend.community.message.domain.model.MessageDomain;
 import com.germogli.backend.community.message.domain.repository.MessageContextRepository;
 import com.germogli.backend.community.message.domain.repository.MessageDomainRepository;
