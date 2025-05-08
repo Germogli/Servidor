@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,42 +18,63 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Filtro de autenticación JWT que se ejecuta una sola vez por cada solicitud.
- * Extrae y valida el token JWT, y configura la autenticación en el contexto de seguridad.
+ * Filtro de autenticación JWT mejorado que extrae el token tanto de cookies como
+ * del header Authorization, priorizando las cookies por seguridad.
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final JwtCookieManager jwtCookieManager;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // Extrae el token JWT del encabezado de la solicitud
-        final String token = getTokenFromRequest(request);
-        if (token != null) {
-            // Obtiene el username del token
-            String username = jwtService.getUsernameFromToken(token);
-            // Si el username es válido y no hay autenticación configurada, se procede
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Carga el UserDetails del usuario
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                // Verifica la validez del token
-                if (jwtService.isTokenValid(token, userDetails)) {
-                    // Crea un objeto de autenticación y lo establece en el contexto de seguridad
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+        try {
+            // 1. Intentar extraer el token de cookies (prioridad)
+            String token = jwtCookieManager.extractJwtFromCookies(request);
+
+            // 2. Si no hay token en cookies, intentar del header Authorization (compatibilidad)
+            if (token == null) {
+                token = getTokenFromRequest(request);
+            }
+
+            if (token != null) {
+                // Obtener el username del token
+                String username = jwtService.getUsernameFromToken(token);
+
+                // Si el username es válido y no hay autenticación configurada, se procede
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    // Carga el UserDetails del usuario
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                    // Verifica la validez del token
+                    if (jwtService.isTokenValid(token, userDetails)) {
+                        // Crea un objeto de autenticación y lo establece en el contexto de seguridad
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                        // Para debugging
+                        log.debug("Usuario autenticado vía {}: {}",
+                                (jwtCookieManager.extractJwtFromCookies(request) != null) ? "cookie" : "header",
+                                username);
+                    }
                 }
             }
+        } catch (Exception e) {
+            log.error("No se pudo establecer la autenticación: {}", e.getMessage());
         }
+
         filterChain.doFilter(request, response);
     }
 
     /**
      * Extrae el token JWT del encabezado Authorization.
+     * Mantiene compatibilidad con el método de autorización anterior.
      *
      * @param request Solicitud HTTP.
      * @return Token JWT o null si no está presente.

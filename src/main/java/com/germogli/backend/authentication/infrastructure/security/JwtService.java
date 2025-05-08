@@ -22,6 +22,15 @@ public class JwtService {
     // Clave secreta para firmar el token (se debe mantener segura y con al menos 256 bits).
     private static final String SECRET_KEY = "uX1v6U/7nO0t8aB3W9vZ6rT3yN0m+P7bQzS9vD8wX0cE";
 
+    // Nombre de la cookie para el token JWT
+    public static final String JWT_COOKIE_NAME = "germogli_jwt";
+
+    // Tiempo de expiración del token en milisegundos (24 minutos)
+    private static final long JWT_EXPIRATION_TIME = 1000 * 60 * 24;
+
+    // Tiempo de expiración de la cookie en segundos (24 minutos)
+    public static final int JWT_COOKIE_EXPIRY_SECONDS = 60 * 24;
+
     /**
      * Genera un token JWT para el usuario proporcionado.
      *
@@ -57,12 +66,10 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(user.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                // El token expira en 24 minutos
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
+                .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_TIME))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
-
     /**
      * Decodifica la clave secreta para la firma del token.
      *

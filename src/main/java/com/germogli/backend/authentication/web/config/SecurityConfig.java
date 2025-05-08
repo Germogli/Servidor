@@ -11,6 +11,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 /**
  * Configuración de seguridad para la aplicación Spring Security.
@@ -35,6 +40,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable()) // Desactiva CSRF para simplificar la autenticación basada en tokens
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configuración CORS personalizada
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Permite solicitudes preflight OPTIONS
                         .requestMatchers("/auth/**").permitAll() // Permite el acceso público a endpoints de autenticación
@@ -45,5 +51,47 @@ public class SecurityConfig {
                 .authenticationProvider(authProvider) // Configura el AuthenticationProvider
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Agrega el filtro JWT
                 .build();
+    }
+
+    /**
+     * Configura las reglas CORS para permitir cookies en solicitudes cross-origin.
+     * Es esencial para que las cookies JWT funcionen correctamente en entornos de desarrollo.
+     *
+     * @return Fuente de configuración CORS
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Dominios permitidos (ajustar según entorno)
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:3000",   // React default
+                "http://localhost:5173",   // Vite dev server
+                "http://127.0.0.1:5173"    // Vite dev server alternativo
+        ));
+
+        // Métodos HTTP permitidos
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        // Headers permitidos
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept"
+        ));
+
+        // Exponer headers específicos al frontend
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+
+        // Permitir credenciales (cookies, autorización, etc.)
+        configuration.setAllowCredentials(true);
+
+        // Duración de cache para respuestas preflight
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
