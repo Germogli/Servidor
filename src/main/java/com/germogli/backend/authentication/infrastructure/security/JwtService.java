@@ -15,7 +15,7 @@ import java.util.function.Function;
 
 /**
  * Servicio para la generación y validación de tokens JWT.
- * Utiliza la librería jjwt para crear y parsear tokens.
+ * Soporta autenticación basada en cookies seguras.
  */
 @Service
 public class JwtService {
@@ -70,6 +70,7 @@ public class JwtService {
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
     /**
      * Decodifica la clave secreta para la firma del token.
      *

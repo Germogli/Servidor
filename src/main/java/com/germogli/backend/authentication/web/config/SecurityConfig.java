@@ -81,9 +81,6 @@ public class SecurityConfig {
                 "Accept"
         ));
 
-        // Exponer headers específicos al frontend
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
-
         // Permitir credenciales (cookies, autorización, etc.)
         configuration.setAllowCredentials(true);
 

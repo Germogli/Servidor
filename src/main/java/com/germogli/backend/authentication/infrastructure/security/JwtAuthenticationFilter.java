@@ -6,20 +6,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Filtro de autenticación JWT mejorado que extrae el token tanto de cookies como
- * del header Authorization, priorizando las cookies por seguridad.
+ * Filtro de autenticación JWT que extrae tokens de cookies HttpOnly.
+ * Verifica y establece la autenticación en el contexto de seguridad.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,13 +31,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            // 1. Intentar extraer el token de cookies (prioridad)
+            // Extraer el token JWT de las cookies
             String token = jwtCookieManager.extractJwtFromCookies(request);
-
-            // 2. Si no hay token en cookies, intentar del header Authorization (compatibilidad)
-            if (token == null) {
-                token = getTokenFromRequest(request);
-            }
 
             if (token != null) {
                 // Obtener el username del token
@@ -59,9 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         SecurityContextHolder.getContext().setAuthentication(authToken);
 
                         // Para debugging
-                        log.debug("Usuario autenticado vía {}: {}",
-                                (jwtCookieManager.extractJwtFromCookies(request) != null) ? "cookie" : "header",
-                                username);
+                        log.debug("Usuario autenticado via cookie: {}", username);
                     }
                 }
             }
@@ -70,20 +61,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    /**
-     * Extrae el token JWT del encabezado Authorization.
-     * Mantiene compatibilidad con el método de autorización anterior.
-     *
-     * @param request Solicitud HTTP.
-     * @return Token JWT o null si no está presente.
-     */
-    private String getTokenFromRequest(HttpServletRequest request) {
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
-        return null;
     }
 }

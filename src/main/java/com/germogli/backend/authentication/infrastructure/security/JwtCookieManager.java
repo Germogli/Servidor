@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Utilidad para gestionar cookies JWT.
- * Provee métodos para crear, añadir y extraer cookies de forma segura.
+ * Proporciona métodos para crear, añadir y extraer cookies de forma segura.
  */
 @Component
 public class JwtCookieManager {
