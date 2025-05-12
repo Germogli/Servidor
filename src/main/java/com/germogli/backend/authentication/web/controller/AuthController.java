@@ -76,4 +76,16 @@ public class AuthController {
             HttpServletResponse response) {
         return ResponseEntity.ok(authService.registerAdmin(request, response));
     }
+
+    /**
+     * Endpoint de comprobación de sesión.
+     * Solo devuelve 200 OK si el usuario está autenticado;
+     * Spring Security bloqueará con 401/403 si no lo está.
+     */
+    @GetMapping("/check")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> checkSession() {
+        // No hace nada de lógica: si llegas aquí, tu sesión es válida
+        return ResponseEntity.ok().build();
+    }
 }
