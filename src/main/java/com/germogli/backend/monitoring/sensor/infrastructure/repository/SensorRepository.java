@@ -16,8 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Implementación de SensorDomainRepository utilizando procedimientos almacenados
- * y consultas JPA.
+ * Implementación de SensorDomainRepository utilizando procedimientos almacenados.
  */
 @Repository
 @RequiredArgsConstructor
@@ -27,8 +26,7 @@ public class SensorRepository implements SensorDomainRepository {
     private final EntityManager entityManager;
 
     /**
-     * Guarda o actualiza un sensor.
-     * Utiliza el procedimiento almacenado sp_create_sensor para crear nuevos sensores.
+     * Guarda o actualiza un sensor utilizando procedimientos almacenados.
      */
     @Override
     @Transactional
@@ -38,86 +36,93 @@ public class SensorRepository implements SensorDomainRepository {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_sensor");
             query.registerStoredProcedureParameter("p_sensor_type", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_unit_of_measurement", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.OUT);
 
             query.setParameter("p_sensor_type", sensor.getSensorType());
             query.setParameter("p_unit_of_measurement", sensor.getUnitOfMeasurement());
 
             query.execute();
 
-            // Obtener el último ID insertado
-            Integer lastInsertId = (Integer) entityManager.createNativeQuery(
-                            "SELECT LAST_INSERT_ID()")
-                    .getSingleResult();
+            // Obtener el ID generado
+            Integer sensorId = (Integer) query.getOutputParameterValue("p_sensor_id");
+            sensor.setId(sensorId);
 
-            sensor.setId(lastInsertId);
             return sensor;
         } else {
-            // Para actualización, usar JPA directamente ya que no hay un procedimiento almacenado específico
-            SensorEntity entity = entityManager.find(SensorEntity.class, sensor.getId());
-            if (entity != null) {
-                entity.setSensorType(sensor.getSensorType());
-                entity.setUnitOfMeasurement(sensor.getUnitOfMeasurement());
-                entityManager.merge(entity);
-            }
+            // Actualizar sensor usando sp_update_sensor
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_sensor");
+            query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_sensor_type", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_unit_of_measurement", String.class, ParameterMode.IN);
+
+            query.setParameter("p_sensor_id", sensor.getId());
+            query.setParameter("p_sensor_type", sensor.getSensorType());
+            query.setParameter("p_unit_of_measurement", sensor.getUnitOfMeasurement());
+
+            query.execute();
+
             return sensor;
         }
     }
 
     /**
-     * Busca un sensor por su ID.
+     * Busca un sensor por su ID utilizando sp_get_sensor_by_id.
      */
     @Override
     public Optional<SensorDomain> findById(Integer id) {
-        SensorEntity entity = entityManager.find(SensorEntity.class, id);
-        return Optional.ofNullable(entity).map(SensorDomain::fromEntityStatic);
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_sensor_by_id", SensorEntity.class);
+        query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_sensor_id", id);
+        query.execute();
+
+        List<SensorEntity> resultList = query.getResultList();
+        if (resultList.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(SensorDomain.fromEntityStatic(resultList.get(0)));
     }
 
     /**
-     * Obtiene todos los sensores.
+     * Obtiene todos los sensores utilizando sp_get_all_sensors.
      */
     @Override
     public List<SensorDomain> findAll() {
-        List<SensorEntity> entities = entityManager.createQuery(
-                        "SELECT s FROM SensorEntity s", SensorEntity.class)
-                .getResultList();
-        return entities.stream().map(SensorDomain::fromEntityStatic).collect(Collectors.toList());
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_sensors", SensorEntity.class);
+        query.execute();
+
+        List<SensorEntity> resultList = query.getResultList();
+        return resultList.stream().map(SensorDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     /**
-     * Elimina un sensor por su ID.
+     * Elimina un sensor por su ID utilizando sp_delete_sensor.
      */
     @Override
     @Transactional
     public void deleteById(Integer id) {
-        // Primero eliminar de la tabla de relación
-        entityManager.createQuery("DELETE FROM CropSensorEntity cs WHERE cs.id.sensorId = :sensorId")
-                .setParameter("sensorId", id)
-                .executeUpdate();
-
-        // Luego eliminar el sensor
-        entityManager.createQuery("DELETE FROM SensorEntity s WHERE s.id = :id")
-                .setParameter("id", id)
-                .executeUpdate();
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_sensor");
+        query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_sensor_id", id);
+        query.execute();
     }
 
     /**
-     * Encuentra todos los sensores asociados a un cultivo específico.
+     * Encuentra todos los sensores asociados a un cultivo usando sp_get_sensors_by_crop_id.
      */
     @Override
     public List<SensorDomain> findByCropId(Integer cropId) {
-        // Consulta nativa para obtener los sensores de un cultivo específico
-        List<SensorEntity> entities = entityManager.createNativeQuery(
-                        "SELECT s.* FROM sensors s " +
-                                "JOIN crop_sensors cs ON s.sensor_id = cs.sensor_id " +
-                                "WHERE cs.crop_id = :cropId", SensorEntity.class)
-                .setParameter("cropId", cropId)
-                .getResultList();
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery(
+                "sp_get_sensors_by_crop_id", SensorEntity.class);
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_crop_id", cropId);
+        query.execute();
 
-        return entities.stream().map(SensorDomain::fromEntityStatic).collect(Collectors.toList());
+        List<SensorEntity> resultList = query.getResultList();
+        return resultList.stream().map(SensorDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     /**
-     * Asocia un sensor a un cultivo usando el procedimiento almacenado.
+     * Asocia un sensor a un cultivo usando sp_add_sensor_to_crop.
      */
     @Override
     @Transactional
@@ -125,15 +130,13 @@ public class SensorRepository implements SensorDomainRepository {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_add_sensor_to_crop");
         query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
-
         query.setParameter("p_crop_id", cropId);
         query.setParameter("p_sensor_id", sensorId);
-
         query.execute();
     }
 
     /**
-     * Desasocia un sensor de un cultivo usando el procedimiento almacenado.
+     * Desasocia un sensor de un cultivo usando sp_remove_sensor_from_crop.
      */
     @Override
     @Transactional
@@ -141,10 +144,8 @@ public class SensorRepository implements SensorDomainRepository {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_remove_sensor_from_crop");
         query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
-
         query.setParameter("p_crop_id", cropId);
         query.setParameter("p_sensor_id", sensorId);
-
         query.execute();
     }
 }

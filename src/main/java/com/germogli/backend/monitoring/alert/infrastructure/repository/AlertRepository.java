@@ -12,13 +12,13 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Implementación de AlertDomainRepository utilizando procedimientos almacenados
- * y consultas JPA.
+ * Implementación de AlertDomainRepository utilizando procedimientos almacenados.
  */
 @Repository
 @RequiredArgsConstructor
@@ -28,7 +28,7 @@ public class AlertRepository implements AlertDomainRepository {
     private final EntityManager entityManager;
 
     /**
-     * Guarda una alerta utilizando el procedimiento almacenado sp_create_crop_alert.
+     * Guarda una alerta utilizando sp_create_crop_alert.
      */
     @Override
     @Transactional
@@ -38,6 +38,7 @@ public class AlertRepository implements AlertDomainRepository {
         query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("p_alert_message", String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("p_alert_level", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_alert_id", Integer.class, ParameterMode.OUT);
 
         query.setParameter("p_crop_id", alert.getCropId());
         query.setParameter("p_sensor_id", alert.getSensorId());
@@ -46,14 +47,11 @@ public class AlertRepository implements AlertDomainRepository {
 
         query.execute();
 
-        // Obtener el último ID insertado
-        Integer lastInsertId = (Integer) entityManager.createNativeQuery(
-                        "SELECT LAST_INSERT_ID()")
-                .getSingleResult();
+        // Obtener el ID generado
+        Integer alertId = (Integer) query.getOutputParameterValue("p_alert_id");
+        alert.setId(alertId);
 
-        alert.setId(lastInsertId);
-
-        // Si no se proporcionó una fecha, establecer la fecha actual
+        // Si no hay fecha de alerta, establecer la fecha actual
         if (alert.getAlertDatetime() == null) {
             alert.setAlertDatetime(LocalDateTime.now());
         }
@@ -62,83 +60,105 @@ public class AlertRepository implements AlertDomainRepository {
     }
 
     /**
-     * Busca una alerta por su ID.
+     * Busca una alerta por su ID utilizando sp_get_alert_by_id.
      */
     @Override
     public Optional<AlertDomain> findById(Integer id) {
-        AlertEntity entity = entityManager.find(AlertEntity.class, id);
-        return Optional.ofNullable(entity).map(AlertDomain::fromEntityStatic);
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_alert_by_id", AlertEntity.class);
+        query.registerStoredProcedureParameter("p_alert_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_alert_id", id);
+        query.execute();
+
+        List<AlertEntity> resultList = query.getResultList();
+        if (resultList.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(AlertDomain.fromEntityStatic(resultList.get(0)));
     }
 
     /**
-     * Obtiene todas las alertas.
+     * Obtiene todas las alertas utilizando sp_get_all_alerts.
      */
     @Override
     public List<AlertDomain> findAll() {
-        List<AlertEntity> entities = entityManager.createQuery(
-                        "SELECT a FROM AlertEntity a ORDER BY a.alertDatetime DESC",
-                        AlertEntity.class)
-                .getResultList();
-        return entities.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_alerts", AlertEntity.class);
+        query.execute();
+
+        List<AlertEntity> resultList = query.getResultList();
+        return resultList.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     /**
-     * Elimina una alerta por su ID.
+     * Elimina una alerta por su ID utilizando sp_delete_alert.
      */
     @Override
     @Transactional
     public void deleteById(Integer id) {
-        entityManager.createQuery("DELETE FROM AlertEntity a WHERE a.id = :id")
-                .setParameter("id", id)
-                .executeUpdate();
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_alert");
+        query.registerStoredProcedureParameter("p_alert_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_alert_id", id);
+        query.execute();
     }
 
     /**
-     * Encuentra todas las alertas de un cultivo específico.
+     * Encuentra todas las alertas de un cultivo específico utilizando sp_get_alerts_by_crop_id.
      */
     @Override
     public List<AlertDomain> findByCropId(Integer cropId) {
-        List<AlertEntity> entities = entityManager.createQuery(
-                        "SELECT a FROM AlertEntity a WHERE a.cropId = :cropId ORDER BY a.alertDatetime DESC",
-                        AlertEntity.class)
-                .setParameter("cropId", cropId)
-                .getResultList();
-        return entities.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery(
+                "sp_get_alerts_by_crop_id", AlertEntity.class);
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_crop_id", cropId);
+        query.execute();
+
+        List<AlertEntity> resultList = query.getResultList();
+        return resultList.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     /**
-     * Encuentra todas las alertas de un nivel específico.
+     * Encuentra todas las alertas de un nivel específico utilizando sp_get_alerts_by_level.
      */
     @Override
     public List<AlertDomain> findByAlertLevel(String alertLevel) {
-        List<AlertEntity> entities = entityManager.createQuery(
-                        "SELECT a FROM AlertEntity a WHERE a.alertLevel = :alertLevel ORDER BY a.alertDatetime DESC",
-                        AlertEntity.class)
-                .setParameter("alertLevel", alertLevel)
-                .getResultList();
-        return entities.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery(
+                "sp_get_alerts_by_level", AlertEntity.class);
+        query.registerStoredProcedureParameter("p_alert_level", String.class, ParameterMode.IN);
+        query.setParameter("p_alert_level", alertLevel);
+        query.execute();
+
+        List<AlertEntity> resultList = query.getResultList();
+        return resultList.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     /**
-     * Encuentra todas las alertas de un cultivo específico en un rango de fechas.
+     * Encuentra todas las alertas de un cultivo específico en un rango de fechas
+     * utilizando sp_get_alerts_by_crop_id_and_date_range.
      */
     @Override
     public List<AlertDomain> findByCropIdAndDateRange(Integer cropId, LocalDateTime startDate, LocalDateTime endDate) {
-        List<AlertEntity> entities = entityManager.createQuery(
-                        "SELECT a FROM AlertEntity a WHERE a.cropId = :cropId " +
-                                "AND a.alertDatetime >= :startDate AND a.alertDatetime <= :endDate " +
-                                "ORDER BY a.alertDatetime DESC",
-                        AlertEntity.class)
-                .setParameter("cropId", cropId)
-                .setParameter("startDate", startDate)
-                .setParameter("endDate", endDate)
-                .getResultList();
-        return entities.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
+        // Formatear las fechas para MySQL
+        String formattedStartDate = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String formattedEndDate = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery(
+                "sp_get_alerts_by_crop_id_and_date_range", AlertEntity.class);
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_start_date", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_end_date", String.class, ParameterMode.IN);
+
+        query.setParameter("p_crop_id", cropId);
+        query.setParameter("p_start_date", formattedStartDate);
+        query.setParameter("p_end_date", formattedEndDate);
+
+        query.execute();
+
+        List<AlertEntity> resultList = query.getResultList();
+        return resultList.stream().map(AlertDomain::fromEntityStatic).collect(Collectors.toList());
     }
 
     /**
      * Procesa una alerta según umbrales predefinidos y genera el historial correspondiente
-     * utilizando el procedimiento almacenado sp_process_alert.
+     * utilizando sp_process_alert.
      */
     @Override
     @Transactional
@@ -148,6 +168,7 @@ public class AlertRepository implements AlertDomainRepository {
         query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("p_alert_level", String.class, ParameterMode.IN);
         query.registerStoredProcedureParameter("p_alert_message", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_alert_id", Integer.class, ParameterMode.OUT);
 
         query.setParameter("p_crop_id", cropId);
         query.setParameter("p_sensor_id", sensorId);
@@ -156,8 +177,12 @@ public class AlertRepository implements AlertDomainRepository {
 
         query.execute();
 
+        // Obtener el ID generado
+        Integer alertId = (Integer) query.getOutputParameterValue("p_alert_id");
+
         // Construir y retornar el dominio de alerta
         return AlertDomain.builder()
+                .id(alertId)
                 .cropId(cropId)
                 .sensorId(sensorId)
                 .alertLevel(alertLevel)

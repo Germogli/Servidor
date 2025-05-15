@@ -119,4 +119,5 @@ public class ReadingController {
                 .data(readings)
                 .build());
     }
+
 }
