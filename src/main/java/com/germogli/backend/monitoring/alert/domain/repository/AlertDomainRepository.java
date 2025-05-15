@@ -49,23 +49,6 @@ public interface AlertDomainRepository {
      */
     List<AlertDomain> findByCropId(Integer cropId);
 
-    /**
-     * Encuentra todas las alertas de un nivel específico.
-     *
-     * @param alertLevel Nivel de alerta.
-     * @return Lista de alertas del nivel especificado.
-     */
-    List<AlertDomain> findByAlertLevel(String alertLevel);
-
-    /**
-     * Encuentra todas las alertas de un cultivo específico en un rango de fechas.
-     *
-     * @param cropId Identificador del cultivo.
-     * @param startDate Fecha de inicio del rango.
-     * @param endDate Fecha de fin del rango.
-     * @return Lista de alertas del cultivo en el rango de fechas.
-     */
-    List<AlertDomain> findByCropIdAndDateRange(Integer cropId, LocalDateTime startDate, LocalDateTime endDate);
 
     /**
      * Procesa una alerta según umbrales predefinidos y genera el historial correspondiente.

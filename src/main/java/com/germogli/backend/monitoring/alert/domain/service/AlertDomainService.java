@@ -91,66 +91,7 @@ public class AlertDomainService {
         return alertRepository.findByCropId(cropId);
     }
 
-    /**
-     * Obtiene todas las alertas de un nivel específico para los cultivos del usuario.
-     * Los administradores pueden ver alertas de todos los cultivos.
-     *
-     * @param alertLevel Nivel de alerta (low, medium, high, critical).
-     * @return Lista de alertas del nivel especificado.
-     */
-    public List<AlertDomain> getAlertsByLevel(String alertLevel) {
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
-        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
 
-        List<AlertDomain> alerts = alertRepository.findByAlertLevel(alertLevel);
-
-        // Si no es administrador, filtrar las alertas para mostrar solo las de sus cultivos
-        if (!isAdmin) {
-            List<CropDomain> userCrops = cropRepository.findByUserId(currentUser.getId());
-            List<Integer> userCropIds = userCrops.stream()
-                    .map(CropDomain::getId)
-                    .collect(Collectors.toList());
-
-            return alerts.stream()
-                    .filter(alert -> userCropIds.contains(alert.getCropId()))
-                    .collect(Collectors.toList());
-        }
-
-        return alerts;
-    }
-
-    /**
-     * Obtiene todas las alertas de un cultivo específico en un rango de fechas.
-     * Verifica que el usuario tenga acceso al cultivo.
-     *
-     * @param cropId ID del cultivo.
-     * @param startDate Fecha de inicio del rango (opcional).
-     * @param endDate Fecha de fin del rango (opcional).
-     * @return Lista de alertas que cumplen con los criterios.
-     * @throws ResourceNotFoundException si el cultivo no existe.
-     * @throws AccessDeniedException si el usuario no tiene acceso al cultivo.
-     */
-    public List<AlertDomain> getAlertsByCropIdAndDateRange(Integer cropId, LocalDateTime startDate, LocalDateTime endDate) {
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
-
-        // Verificar que el cultivo exista
-        CropDomain crop = cropRepository.findById(cropId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
-
-        // Verificar que el usuario actual sea el propietario o un administrador
-        boolean isOwner = crop.getUserId().equals(currentUser.getId());
-        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
-
-        if (!isOwner && !isAdmin) {
-            throw new AccessDeniedException("No tiene permisos para acceder a las alertas de este cultivo");
-        }
-
-        // Establecer valores por defecto si no se proporcionan
-        LocalDateTime effectiveStartDate = startDate != null ? startDate : LocalDateTime.now().minusDays(7);
-        LocalDateTime effectiveEndDate = endDate != null ? endDate : LocalDateTime.now();
-
-        return alertRepository.findByCropIdAndDateRange(cropId, effectiveStartDate, effectiveEndDate);
-    }
 
     /**
      * Elimina una alerta por su ID.
@@ -176,58 +117,6 @@ public class AlertDomainService {
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
 
         alertRepository.deleteById(id);
-    }
-
-    /**
-     * Crea manualmente una alerta para un cultivo y sensor específicos.
-     * Solo los administradores pueden crear alertas manualmente.
-     *
-     * @param cropId ID del cultivo.
-     * @param sensorId ID del sensor.
-     * @param alertLevel Nivel de alerta.
-     * @param alertMessage Mensaje de alerta.
-     * @return La alerta creada.
-     * @throws ResourceNotFoundException si el cultivo o el sensor no existen.
-     * @throws AccessDeniedException si el usuario no es administrador.
-     */
-    @Transactional
-    public AlertDomain createAlert(Integer cropId, Integer sensorId, String alertLevel, String alertMessage) {
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
-
-        // Verificar que el usuario sea administrador
-        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
-
-        if (!isAdmin) {
-            throw new AccessDeniedException("Solo los administradores pueden crear alertas manualmente");
-        }
-
-        // Verificar que el cultivo exista
-        CropDomain crop = cropRepository.findById(cropId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
-
-        // Verificar que el sensor exista
-        SensorDomain sensor = sensorRepository.findById(sensorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Sensor no encontrado con id: " + sensorId));
-
-        // Crear la alerta
-        AlertDomain alert = AlertDomain.builder()
-                .cropId(cropId)
-                .sensorId(sensorId)
-                .alertLevel(alertLevel)
-                .alertMessage(alertMessage)
-                .alertDatetime(LocalDateTime.now())
-                .build();
-
-        AlertDomain savedAlert = alertRepository.save(alert);
-
-        // Enviar notificación al propietario del cultivo
-        notificationService.sendNotification(
-                crop.getUserId(),
-                alertMessage,
-                "sensor_alert"
-        );
-
-        return savedAlert;
     }
 
     /**
