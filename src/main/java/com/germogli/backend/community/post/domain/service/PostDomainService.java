@@ -1,7 +1,11 @@
 package com.germogli.backend.community.post.domain.service;
 
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.specialized.BlockBlobClient;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.azure.AzureBlobStorageService;
+import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.common.notification.application.service.NotificationService;
 import com.germogli.backend.community.post.domain.model.PostDomain;
@@ -16,8 +20,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,28 +62,45 @@ public class PostDomainService {
         MultipartFile file = request.getFile();
         if (file != null && !file.isEmpty()) {
             try {
-                // Generar un nombre único para el archivo (por ejemplo: "userId_timestamp_nombreOriginal")
+                // Verificar si es una imagen o un video
+                String contentType = file.getContentType();
+                if (contentType != null) {
+                    long fileSizeInMB = file.getSize() / (1024 * 1024);
+
+                    // Validación para imágenes
+                    if (contentType.startsWith("image/")) {
+                        if (fileSizeInMB > 10) {
+                            throw new CustomForbiddenException("La imagen excede el límite de 10MB. Su tamaño actual es de "
+                                    + fileSizeInMB + "MB.");
+                        }
+                    }
+                    // Validación para videos
+                    else if (contentType.startsWith("video/")) {
+                        if (fileSizeInMB > 1024) {
+                            throw new CustomForbiddenException("El video excede el límite de 1GB. Su tamaño actual es de "
+                                    + fileSizeInMB + "MB.");
+                        }
+
+                        // Para archivos grandes (videos), usar método de carga por bloques
+                        if (fileSizeInMB > 100) {
+                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" +
+                                    file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_");
+                            multimediaUrl = uploadLargeFileToAzure("publicaciones", fileName, file);
+                            return finalizePostCreation(currentUser, request, multimediaUrl);
+                        }
+                    }
+                }
+
+                // Para archivos pequeños, continuar con el método original
                 String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-                // Subir el archivo al contenedor "publicaciones"
                 azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
-                // Recuperar la URL permanente del blob (no se usa SAS token para este caso)
                 multimediaUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
             } catch (IOException e) {
                 throw new RuntimeException("Error al subir el archivo a Azure Blob Storage", e);
             }
         }
 
-        PostDomain post = PostDomain.builder()
-                .userId(currentUser.getId())
-                .postType(request.getPostType())
-                .content(request.getContent())
-                .multimediaContent(multimediaUrl)
-                .groupId(request.getGroupId())
-                .threadId(request.getThreadId())
-                .postDate(LocalDateTime.now())
-                .build();
-
-        return postRepository.save(post);
+        return finalizePostCreation(currentUser, request, multimediaUrl);
     }
 
     /**
@@ -195,9 +222,29 @@ public class PostDomainService {
         if (url == null || url.isEmpty()) {
             return "";
         }
-        int lastSlash = url.lastIndexOf('/');
-        int queryIndex = url.indexOf('?', lastSlash);
-        return (queryIndex > lastSlash) ? url.substring(lastSlash + 1, queryIndex) : url.substring(lastSlash + 1);
+
+        try {
+            // Extraer la parte después del último '/'
+            int lastSlashIndex = url.lastIndexOf('/');
+            if (lastSlashIndex == -1) {
+                return "";
+            }
+
+            String fileName = url.substring(lastSlashIndex + 1);
+
+            // Eliminar cualquier parámetro de consulta (después de ?)
+            int queryIndex = fileName.indexOf('?');
+            if (queryIndex != -1) {
+                fileName = fileName.substring(0, queryIndex);
+            }
+
+            // Importante: NO decodificar el nombre del archivo aquí
+            // Simplemente devolver el nombre del archivo tal como está en la URL
+            return fileName;
+        } catch (Exception e) {
+            System.err.println("Error al extraer nombre de archivo: " + e.getMessage());
+            return "";
+        }
     }
 
     /**
@@ -207,12 +254,27 @@ public class PostDomainService {
      * @return DTO con la información del post.
      */
     public PostResponseDTO toResponse(PostDomain post) {
+        String secureUrl = post.getMultimediaContent();
+
+        // Generar URL segura con SAS token si hay contenido multimedia
+        if (secureUrl != null && !secureUrl.isEmpty() &&
+                secureUrl.contains("germoglistorage.blob.core.windows.net/publicaciones")) {
+            // Extraer el nombre del archivo desde la URL
+            String fileName = extractBlobNameFromUrl(secureUrl);
+            // Generar token SAS con duración de 6 horas
+            secureUrl = azureBlobStorageService.generateSasToken(
+                    "publicaciones",
+                    fileName,
+                    360  // 6 horas de duración
+            );
+        }
+
         return PostResponseDTO.builder()
                 .id(post.getId())
                 .userId(post.getUserId())
                 .postType(post.getPostType())
                 .content(post.getContent())
-                .multimediaContent(post.getMultimediaContent())
+                .multimediaContent(secureUrl) // URL con token SAS
                 .postDate(post.getPostDate())
                 .groupId(post.getGroupId())
                 .threadId(post.getThreadId())
@@ -229,5 +291,56 @@ public class PostDomainService {
         return posts.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    // Método auxiliar para finalizar la creación del post
+    private PostDomain finalizePostCreation(UserDomain currentUser, CreatePostRequestDTO request, String multimediaUrl) {
+        PostDomain post = PostDomain.builder()
+                .userId(currentUser.getId())
+                .postType(request.getPostType())
+                .content(request.getContent())
+                .multimediaContent(multimediaUrl)
+                .groupId(request.getGroupId())
+                .threadId(request.getThreadId())
+                .postDate(LocalDateTime.now())
+                .build();
+
+        return postRepository.save(post);
+    }
+
+    // Método para subir archivos grandes usando técnica de bloques
+    private String uploadLargeFileToAzure(String containerName, String blobName, MultipartFile file) throws IOException {
+        // Obtener el contenedor
+        BlobContainerClient containerClient = azureBlobStorageService.getOrCreateContainer(containerName);
+        BlobClient blobClient = containerClient.getBlobClient(blobName);
+        BlockBlobClient blockBlobClient = blobClient.getBlockBlobClient();
+
+        // Subir por bloques
+        InputStream inputStream = file.getInputStream();
+        int blockSize = 4 * 1024 * 1024; // 4MB por bloque
+        byte[] buffer = new byte[blockSize];
+        List<String> blockIds = new ArrayList<>();
+        int blockIndex = 0;
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            String blockId = Base64.getEncoder().encodeToString(
+                    String.format("%06d", blockIndex).getBytes(StandardCharsets.UTF_8));
+            blockIds.add(blockId);
+
+            // Subir el bloque
+            if (bytesRead < buffer.length) {
+                byte[] trimmedBuffer = Arrays.copyOf(buffer, bytesRead);
+                blockBlobClient.stageBlock(blockId, new ByteArrayInputStream(trimmedBuffer), bytesRead);
+            } else {
+                blockBlobClient.stageBlock(blockId, new ByteArrayInputStream(buffer), bytesRead);
+            }
+
+            blockIndex++;
+        }
+
+        // Finalizar la subida
+        blockBlobClient.commitBlockList(blockIds);
+        return blobClient.getBlobUrl();
     }
 }

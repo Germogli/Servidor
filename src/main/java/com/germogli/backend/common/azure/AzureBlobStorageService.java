@@ -5,12 +5,21 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import com.azure.storage.blob.specialized.BlockBlobClient;
 import com.azure.storage.common.sas.SasProtocol;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
 
 /**
  * Servicio para gestionar archivos en Azure Blob Storage.
@@ -31,28 +40,59 @@ public class AzureBlobStorageService {
      * @return URL firmada para acceso temporal
      */
     public String generateSasToken(String containerName, String blobName, int expirationMinutes) {
-        // Obtener el cliente del contenedor
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+        try {
+            // Obtener el cliente del contenedor
+            BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
 
-        // Obtener el cliente del blob específico
-        BlobClient blobClient = containerClient.getBlobClient(blobName);
+            // IMPORTANTE: NO codificar el nombre del blob aquí - Azure SDK lo hará por nosotros
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
 
-        // Definir permisos para el token SAS (lectura en este caso)
-        BlobSasPermission sasPermission = new BlobSasPermission()
-                .setReadPermission(true);
+            // Verificar si el blob existe y mostrar mensaje de diagnóstico
+            boolean exists = blobClient.exists();
+            System.out.println("Verificando blob '" + blobName + "': " + (exists ? "EXISTE" : "NO EXISTE"));
 
-        // Calcular tiempo de expiración
-        OffsetDateTime expirationTime = OffsetDateTime.now().plusMinutes(expirationMinutes);
+            if (!exists) {
+                // Listar algunos blobs para diagnóstico
+                System.out.println("Blobs en el contenedor:");
+                containerClient.listBlobs().iterator().forEachRemaining(
+                        blob -> System.out.println(" - " + blob.getName())
+                );
 
-        // Generar valores para la firma SAS
-        BlobServiceSasSignatureValues sasSignatureValues = new BlobServiceSasSignatureValues(expirationTime, sasPermission)
-                .setProtocol(SasProtocol.HTTPS_ONLY);  // Solo permitir conexiones seguras
+                // Intentar con un nombre URL-encoded por si acaso
+                String encodedName = URLEncoder.encode(blobName, StandardCharsets.UTF_8.name())
+                        .replace("+", "%20"); // Importante: reemplazar + por %20 para espacios
+                blobClient = containerClient.getBlobClient(encodedName);
+                exists = blobClient.exists();
+                System.out.println("Verificando blob codificado '" + encodedName + "': " + (exists ? "EXISTE" : "NO EXISTE"));
+            }
 
-        // Generar el token SAS
-        String sasToken = blobClient.generateSas(sasSignatureValues);
+            if (!exists) {
+                return ""; // O retornar una URL por defecto
+            }
 
-        // Construir URL con token SAS
-        return blobClient.getBlobUrl() + "?" + sasToken;
+            // Definir permisos para el token SAS (lectura en este caso)
+            BlobSasPermission sasPermission = new BlobSasPermission()
+                    .setReadPermission(true);
+
+            // Calcular tiempo de expiración
+            OffsetDateTime expirationTime = OffsetDateTime.now().plusMinutes(expirationMinutes);
+
+            // Generar valores para la firma SAS
+            BlobServiceSasSignatureValues sasSignatureValues = new BlobServiceSasSignatureValues(expirationTime, sasPermission)
+                    .setProtocol(SasProtocol.HTTPS_HTTP);  // Permitir conexiones HTTP y HTTPS
+
+            // Generar el token SAS
+            String sasToken = blobClient.generateSas(sasSignatureValues);
+
+            // Construir URL con token SAS
+            String fullUrl = blobClient.getBlobUrl() + "?" + sasToken;
+            System.out.println("URL con SAS generada: " + fullUrl);
+            return fullUrl;
+        } catch (Exception e) {
+            System.err.println("Error generando SAS token: " + e.getMessage());
+            e.printStackTrace();
+            return "";
+        }
     }
 
     /**
@@ -93,7 +133,7 @@ public class AzureBlobStorageService {
      * @param containerName Nombre del contenedor.
      * @return Cliente del contenedor.
      */
-    private BlobContainerClient getOrCreateContainer(String containerName) {
+    public BlobContainerClient getOrCreateContainer(String containerName) {
         // Obtiene el contenedor
         BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
         // Si el contenedor no existe, lo crea
@@ -113,6 +153,46 @@ public class AzureBlobStorageService {
     public String getBlobUrl(String containerName, String blobName) {
         BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
         BlobClient blobClient = containerClient.getBlobClient(blobName);
+        return blobClient.getBlobUrl();
+    }
+
+    /**
+     * Sube un archivo grande por bloques para optimizar el rendimiento.
+     *
+     * @param containerName Nombre del contenedor
+     * @param blobName Nombre del archivo (blob)
+     * @param inputStream Stream con los datos del archivo
+     * @param length Tamaño del archivo en bytes
+     * @return URL del blob subido
+     */
+    public String uploadLargeFile(String containerName, String blobName, InputStream inputStream, long length) throws IOException {
+        BlobContainerClient containerClient = getOrCreateContainer(containerName);
+        BlobClient blobClient = containerClient.getBlobClient(blobName);
+        BlockBlobClient blockBlobClient = blobClient.getBlockBlobClient();
+
+        // Tamaño de cada bloque (4MB)
+        int blockSize = 4 * 1024 * 1024;
+        byte[] buffer = new byte[blockSize];
+        List<String> blockIds = new ArrayList<>();
+        int blockIndex = 0;
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            String blockId = Base64.getEncoder().encodeToString(
+                    String.format("%06d", blockIndex).getBytes(StandardCharsets.UTF_8));
+            blockIds.add(blockId);
+
+            if (bytesRead < buffer.length) {
+                byte[] trimmedBuffer = Arrays.copyOf(buffer, bytesRead);
+                blockBlobClient.stageBlock(blockId, new ByteArrayInputStream(trimmedBuffer), bytesRead);
+            } else {
+                blockBlobClient.stageBlock(blockId, new ByteArrayInputStream(buffer), bytesRead);
+            }
+
+            blockIndex++;
+        }
+
+        blockBlobClient.commitBlockList(blockIds);
         return blobClient.getBlobUrl();
     }
 }
