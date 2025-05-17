@@ -41,6 +41,7 @@ public class PostController {
             @ModelAttribute @Valid CreatePostRequestDTO postRequest) {
 
         PostDomain post = postDomainService.createPost(postRequest);
+        // Usando el método toResponse que ahora genera URLs seguras
         return ResponseEntity.ok(ApiResponseDTO.<PostResponseDTO>builder()
                 .message("Publicación creada correctamente")
                 .data(postDomainService.toResponse(post))
