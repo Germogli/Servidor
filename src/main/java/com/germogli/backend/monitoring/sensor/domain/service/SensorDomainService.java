@@ -350,4 +350,107 @@ public class SensorDomainService {
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
+    /**
+     * Crea un nuevo sensor y lo asocia directamente a un cultivo con umbrales.
+     * Verifica que el usuario tenga acceso al cultivo.
+     *
+     * @param sensorRequest DTO con los datos del sensor
+     * @param cropId ID del cultivo al que se asociará
+     * @param minThreshold Umbral mínimo para las lecturas
+     * @param maxThreshold Umbral máximo para las lecturas
+     * @return El sensor creado y asociado
+     * @throws ResourceNotFoundException si el cultivo no existe
+     * @throws AccessDeniedException si el usuario no tiene acceso al cultivo
+     */
+    @Transactional
+    public SensorDomain createSensorAndAssociateToCrop(SensorRequestDTO sensorRequest,
+                                                       Integer cropId,
+                                                       BigDecimal minThreshold,
+                                                       BigDecimal maxThreshold) {
+
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+        // Verificar que el cultivo exista
+        CropDomain crop = cropRepository.findById(cropId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
+
+        // Verificar que el usuario actual sea el propietario o un administrador
+        boolean isOwner = crop.getUserId().equals(currentUser.getId());
+        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para modificar este cultivo");
+        }
+
+        // Crear el sensor y asociarlo al cultivo en una sola operación
+        SensorDomain sensor = sensorRepository.createAndAssociateToCrop(
+                sensorRequest.getSensorType(),
+                sensorRequest.getUnitOfMeasurement(),
+                cropId,
+                minThreshold,
+                maxThreshold
+        );
+
+        // Enviar notificación al propietario
+        notificationService.sendNotification(
+                crop.getUserId(),
+                "Se ha añadido un nuevo sensor de " + sensor.getSensorType() + " a tu cultivo " + crop.getCropName(),
+                "sensor"
+        );
+
+        return sensor;
+    }
+
+    /**
+     * Crea un nuevo sensor y lo asocia directamente a un cultivo con umbrales.
+     * Verifica que el usuario tenga acceso al cultivo.
+     *
+     * @param sensorType Tipo de sensor
+     * @param unitOfMeasurement Unidad de medida
+     * @param cropId ID del cultivo al que se asociará
+     * @param minThreshold Umbral mínimo para las lecturas
+     * @param maxThreshold Umbral máximo para las lecturas
+     * @return El sensor creado y asociado
+     * @throws ResourceNotFoundException si el cultivo no existe
+     * @throws AccessDeniedException si el usuario no tiene acceso al cultivo
+     */
+    @Transactional
+    public SensorDomain createSensorAndAssociateToCrop(String sensorType,
+                                                       String unitOfMeasurement,
+                                                       Integer cropId,
+                                                       BigDecimal minThreshold,
+                                                       BigDecimal maxThreshold) {
+
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+        // Verificar que el cultivo exista
+        CropDomain crop = cropRepository.findById(cropId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
+
+        // Verificar que el usuario actual sea el propietario o un administrador
+        boolean isOwner = crop.getUserId().equals(currentUser.getId());
+        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para modificar este cultivo");
+        }
+
+        // Crear el sensor y asociarlo al cultivo en una sola operación
+        SensorDomain sensor = sensorRepository.createAndAssociateToCrop(
+                sensorType,
+                unitOfMeasurement,
+                cropId,
+                minThreshold,
+                maxThreshold
+        );
+
+        // Enviar notificación al propietario
+        notificationService.sendNotification(
+                crop.getUserId(),
+                "Se ha añadido un nuevo sensor de " + sensor.getSensorType() + " a tu cultivo " + crop.getCropName(),
+                "sensor"
+        );
+
+        return sensor;
+    }
 }

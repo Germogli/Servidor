@@ -3,6 +3,7 @@ package com.germogli.backend.monitoring.sensor.web.controller;
 import com.germogli.backend.monitoring.application.dto.common.ApiResponseDTO;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorRequestDTO;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorResponseDTO;
+import com.germogli.backend.monitoring.sensor.application.dto.SensorWithThresholdsRequestDTO;
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 import com.germogli.backend.monitoring.sensor.domain.service.SensorDomainService;
 import jakarta.validation.Valid;
@@ -210,6 +211,31 @@ public class SensorController {
         sensorDomainService.removeSensorFromCrop(cropId, sensorId);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
                 .message("Sensor eliminado del cultivo correctamente")
+                .build());
+    }
+
+    /**
+     * Endpoint para crear un sensor y asociarlo directamente a un cultivo con umbrales.
+     *
+     * @param cropId ID del cultivo al que se asociará el sensor
+     * @param request DTO con los datos del sensor y sus umbrales
+     * @return Respuesta API con el sensor creado y asociado
+     */
+    @PostMapping("/crop/{cropId}/create-with-thresholds")
+    public ResponseEntity<ApiResponseDTO<SensorResponseDTO>> createSensorAndAssociateToCrop(
+            @PathVariable Integer cropId,
+            @Valid @RequestBody SensorWithThresholdsRequestDTO request) {
+
+        SensorDomain sensor = sensorDomainService.createSensorAndAssociateToCrop(
+                request.getSensorType(),
+                request.getUnitOfMeasurement(),
+                cropId,
+                request.getMinThreshold(),
+                request.getMaxThreshold());
+
+        return ResponseEntity.ok(ApiResponseDTO.<SensorResponseDTO>builder()
+                .message("Sensor creado y asociado al cultivo correctamente")
+                .data(sensorDomainService.toResponse(sensor))
                 .build());
     }
 }

@@ -188,4 +188,36 @@ public class SensorRepository implements SensorDomainRepository {
         query.setParameter("p_sensor_id", sensorId);
         query.execute();
     }
+    @Override
+    @Transactional
+    public SensorDomain createAndAssociateToCrop(String sensorType, String unitOfMeasurement,
+                                                 Integer cropId, BigDecimal minThreshold,
+                                                 BigDecimal maxThreshold) {
+
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_sensor_with_association");
+        query.registerStoredProcedureParameter("p_sensor_type", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_unit_of_measurement", String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_min_threshold", BigDecimal.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_max_threshold", BigDecimal.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.OUT);
+
+        query.setParameter("p_sensor_type", sensorType);
+        query.setParameter("p_unit_of_measurement", unitOfMeasurement);
+        query.setParameter("p_crop_id", cropId);
+        query.setParameter("p_min_threshold", minThreshold);
+        query.setParameter("p_max_threshold", maxThreshold);
+
+        query.execute();
+
+        // Obtener el ID generado
+        Integer sensorId = (Integer) query.getOutputParameterValue("p_sensor_id");
+
+        // Crear y devolver el objeto de dominio
+        return SensorDomain.builder()
+                .id(sensorId)
+                .sensorType(sensorType)
+                .unitOfMeasurement(unitOfMeasurement)
+                .build();
+    }
 }
