@@ -170,6 +170,14 @@ public class GuideDomainService {
                 throw new AccessDeniedException("El usuario no tiene permisos para crear guías.");
             }
 
+            // Verificar tamaño del archivo (10MB máximo para PDFs)
+            MultipartFile pdfFile = dto.getPdfFile();
+            long fileSizeInMB = pdfFile.getSize() / (1024 * 1024);
+            if (fileSizeInMB > 10) {
+                throw new CustomForbiddenException("El archivo PDF excede el límite de 10MB. Su tamaño actual es de "
+                        + fileSizeInMB + "MB.");
+            }
+
             // Verificar que el módulo existe antes de proceder
             ModuleDomain module = moduleDomainService.getModuleById(dto.getModuleId());
 
