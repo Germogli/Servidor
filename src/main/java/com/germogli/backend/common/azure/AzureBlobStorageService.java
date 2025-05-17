@@ -5,12 +5,20 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
+import com.azure.storage.blob.specialized.BlockBlobClient;
 import com.azure.storage.common.sas.SasProtocol;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
 
 /**
  * Servicio para gestionar archivos en Azure Blob Storage.
@@ -93,7 +101,7 @@ public class AzureBlobStorageService {
      * @param containerName Nombre del contenedor.
      * @return Cliente del contenedor.
      */
-    private BlobContainerClient getOrCreateContainer(String containerName) {
+    public BlobContainerClient getOrCreateContainer(String containerName) {
         // Obtiene el contenedor
         BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
         // Si el contenedor no existe, lo crea
@@ -113,6 +121,46 @@ public class AzureBlobStorageService {
     public String getBlobUrl(String containerName, String blobName) {
         BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
         BlobClient blobClient = containerClient.getBlobClient(blobName);
+        return blobClient.getBlobUrl();
+    }
+
+    /**
+     * Sube un archivo grande por bloques para optimizar el rendimiento.
+     *
+     * @param containerName Nombre del contenedor
+     * @param blobName Nombre del archivo (blob)
+     * @param inputStream Stream con los datos del archivo
+     * @param length Tamaño del archivo en bytes
+     * @return URL del blob subido
+     */
+    public String uploadLargeFile(String containerName, String blobName, InputStream inputStream, long length) throws IOException {
+        BlobContainerClient containerClient = getOrCreateContainer(containerName);
+        BlobClient blobClient = containerClient.getBlobClient(blobName);
+        BlockBlobClient blockBlobClient = blobClient.getBlockBlobClient();
+
+        // Tamaño de cada bloque (4MB)
+        int blockSize = 4 * 1024 * 1024;
+        byte[] buffer = new byte[blockSize];
+        List<String> blockIds = new ArrayList<>();
+        int blockIndex = 0;
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            String blockId = Base64.getEncoder().encodeToString(
+                    String.format("%06d", blockIndex).getBytes(StandardCharsets.UTF_8));
+            blockIds.add(blockId);
+
+            if (bytesRead < buffer.length) {
+                byte[] trimmedBuffer = Arrays.copyOf(buffer, bytesRead);
+                blockBlobClient.stageBlock(blockId, new ByteArrayInputStream(trimmedBuffer), bytesRead);
+            } else {
+                blockBlobClient.stageBlock(blockId, new ByteArrayInputStream(buffer), bytesRead);
+            }
+
+            blockIndex++;
+        }
+
+        blockBlobClient.commitBlockList(blockIds);
         return blobClient.getBlobUrl();
     }
 }
