@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -132,6 +133,45 @@ public class SensorRepository implements SensorDomainRepository {
         query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
         query.setParameter("p_crop_id", cropId);
         query.setParameter("p_sensor_id", sensorId);
+        query.execute();
+    }
+    /**
+     * Asocia un sensor a un cultivo con umbrales personalizados usando sp_add_sensor_to_crop_with_thresholds.
+     */
+    @Override
+    @Transactional
+    public void addSensorToCropWithThresholds(Integer cropId, Integer sensorId, BigDecimal minThreshold, BigDecimal maxThreshold) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_add_sensor_to_crop_with_thresholds");
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_min_threshold", BigDecimal.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_max_threshold", BigDecimal.class, ParameterMode.IN);
+
+        query.setParameter("p_crop_id", cropId);
+        query.setParameter("p_sensor_id", sensorId);
+        query.setParameter("p_min_threshold", minThreshold);
+        query.setParameter("p_max_threshold", maxThreshold);
+
+        query.execute();
+    }
+
+    /**
+     * Actualiza los umbrales de un sensor asociado a un cultivo usando sp_update_crop_sensor_thresholds.
+     */
+    @Override
+    @Transactional
+    public void updateSensorThresholds(Integer cropId, Integer sensorId, BigDecimal minThreshold, BigDecimal maxThreshold) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_crop_sensor_thresholds");
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_min_threshold", BigDecimal.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_max_threshold", BigDecimal.class, ParameterMode.IN);
+
+        query.setParameter("p_crop_id", cropId);
+        query.setParameter("p_sensor_id", sensorId);
+        query.setParameter("p_min_threshold", minThreshold);
+        query.setParameter("p_max_threshold", maxThreshold);
+
         query.execute();
     }
 

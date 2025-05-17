@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -28,13 +29,12 @@ public class SensorController {
 
     /**
      * Endpoint para crear un nuevo sensor.
-     * Solo disponible para administradores o moderadores.
+     * Cualquier usuario autenticado puede crear sensores.
      *
      * @param request DTO con los datos del sensor.
      * @return Respuesta API con el sensor creado.
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MODERADOR')")
     public ResponseEntity<ApiResponseDTO<SensorResponseDTO>> createSensor(@Valid @RequestBody SensorRequestDTO request) {
         SensorDomain sensor = sensorDomainService.createSensor(request);
         return ResponseEntity.ok(ApiResponseDTO.<SensorResponseDTO>builder()
@@ -73,15 +73,29 @@ public class SensorController {
     }
 
     /**
+     * Endpoint para obtener todos los sensores asociados a los cultivos del usuario autenticado.
+     *
+     * @return Respuesta API con la lista de sensores del usuario.
+     */
+    @GetMapping("/user")
+    public ResponseEntity<ApiResponseDTO<List<SensorResponseDTO>>> getUserSensors() {
+        List<SensorResponseDTO> sensors = sensorDomainService.toResponseList(
+                sensorDomainService.getUserSensors());
+        return ResponseEntity.ok(ApiResponseDTO.<List<SensorResponseDTO>>builder()
+                .message("Sensores del usuario recuperados correctamente")
+                .data(sensors)
+                .build());
+    }
+
+    /**
      * Endpoint para actualizar un sensor.
-     * Solo disponible para administradores o moderadores.
+     * Cualquier usuario autenticado puede actualizar sensores.
      *
      * @param id Identificador del sensor a actualizar.
      * @param request DTO con los nuevos datos.
      * @return Respuesta API con el sensor actualizado.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MODERADOR')")
     public ResponseEntity<ApiResponseDTO<SensorResponseDTO>> updateSensor(
             @PathVariable Integer id, @Valid @RequestBody SensorRequestDTO request) {
         SensorDomain sensor = sensorDomainService.updateSensor(id, request);
@@ -93,13 +107,12 @@ public class SensorController {
 
     /**
      * Endpoint para eliminar un sensor.
-     * Solo disponible para administradores.
+     * Cualquier usuario autenticado puede eliminar sensores.
      *
      * @param id Identificador del sensor a eliminar.
      * @return Respuesta API confirmando la eliminación.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ApiResponseDTO<Void>> deleteSensor(@PathVariable Integer id) {
         sensorDomainService.deleteSensor(id);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
@@ -119,6 +132,52 @@ public class SensorController {
         return ResponseEntity.ok(ApiResponseDTO.<List<SensorResponseDTO>>builder()
                 .message("Sensores del cultivo recuperados correctamente")
                 .data(sensors)
+                .build());
+    }
+
+    /**
+     * Endpoint para asociar un sensor a un cultivo con umbrales personalizados.
+     *
+     * @param cropId Identificador del cultivo.
+     * @param sensorId Identificador del sensor.
+     * @param minThreshold Umbral mínimo.
+     * @param maxThreshold Umbral máximo.
+     * @return Respuesta API confirmando la asociación.
+     */
+    @PostMapping("/crop/{cropId}/sensor/{sensorId}/thresholds")
+    public ResponseEntity<ApiResponseDTO<Void>> addSensorToCropWithThresholds(
+            @PathVariable Integer cropId,
+            @PathVariable Integer sensorId,
+            @RequestParam(value = "minThreshold", required = false) BigDecimal minThreshold,
+            @RequestParam(value = "maxThreshold", required = false) BigDecimal maxThreshold) {
+
+        sensorDomainService.addSensorToCropWithThresholds(cropId, sensorId, minThreshold, maxThreshold);
+
+        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
+                .message("Sensor añadido al cultivo con umbrales correctamente")
+                .build());
+    }
+
+    /**
+     * Endpoint para actualizar los umbrales de un sensor asociado a un cultivo.
+     *
+     * @param cropId Identificador del cultivo.
+     * @param sensorId Identificador del sensor.
+     * @param minThreshold Nuevo umbral mínimo.
+     * @param maxThreshold Nuevo umbral máximo.
+     * @return Respuesta API confirmando la actualización.
+     */
+    @PutMapping("/crop/{cropId}/sensor/{sensorId}/thresholds")
+    public ResponseEntity<ApiResponseDTO<Void>> updateSensorThresholds(
+            @PathVariable Integer cropId,
+            @PathVariable Integer sensorId,
+            @RequestParam("minThreshold") BigDecimal minThreshold,
+            @RequestParam("maxThreshold") BigDecimal maxThreshold) {
+
+        sensorDomainService.updateSensorThresholds(cropId, sensorId, minThreshold, maxThreshold);
+
+        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
+                .message("Umbrales del sensor actualizados correctamente")
                 .build());
     }
 

@@ -3,7 +3,7 @@ package com.germogli.backend.monitoring.alert.domain.service;
 import com.germogli.backend.authentication.domain.model.UserDomain;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.common.notification.application.service.NotificationService;
-import com.germogli.backend.community.domain.service.CommunitySharedService;
+import com.germogli.backend.monitoring.domain.service.MonitoringSharedService;
 import com.germogli.backend.monitoring.alert.application.dto.AlertResponseDTO;
 import com.germogli.backend.monitoring.alert.domain.model.AlertDomain;
 import com.germogli.backend.monitoring.alert.domain.repository.AlertDomainRepository;
@@ -16,7 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +31,7 @@ public class AlertDomainService {
     private final AlertDomainRepository alertRepository;
     private final CropDomainRepository cropRepository;
     private final SensorDomainRepository sensorRepository;
-    private final CommunitySharedService sharedService;
+    private final MonitoringSharedService sharedService;
     private final NotificationService notificationService;
 
     /**
@@ -91,33 +91,66 @@ public class AlertDomainService {
         return alertRepository.findByCropId(cropId);
     }
 
+    /**
+     * Obtiene todas las alertas de los cultivos del usuario autenticado.
+     *
+     * @return Lista de alertas del usuario.
+     */
+    public List<AlertDomain> getUserAlerts() {
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
 
+        // Obtener todos los cultivos del usuario
+        List<CropDomain> userCrops = cropRepository.findByUserId(currentUser.getId());
+
+        // Si no tiene cultivos, devolver lista vacía
+        if (userCrops.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Extraer los IDs de cultivos
+        List<Integer> cropIds = userCrops.stream()
+                .map(CropDomain::getId)
+                .collect(Collectors.toList());
+
+        // Obtener todas las alertas de esos cultivos
+        List<AlertDomain> userAlerts = new ArrayList<>();
+        for (Integer cropId : cropIds) {
+            userAlerts.addAll(alertRepository.findByCropId(cropId));
+        }
+
+        return userAlerts;
+    }
 
     /**
      * Elimina una alerta por su ID.
-     * Solo los administradores pueden eliminar alertas.
+     * Verifica que el usuario tenga acceso al cultivo asociado a la alerta.
      *
      * @param id ID de la alerta a eliminar.
      * @throws ResourceNotFoundException si la alerta no existe.
-     * @throws AccessDeniedException si el usuario no es administrador.
+     * @throws AccessDeniedException si el usuario no tiene acceso al cultivo.
      */
     @Transactional
     public void deleteAlert(Integer id) {
         UserDomain currentUser = sharedService.getAuthenticatedUser();
 
-        // Verificar que el usuario sea administrador
-        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
-
-        if (!isAdmin) {
-            throw new AccessDeniedException("Solo los administradores pueden eliminar alertas");
-        }
-
-        // Verificar que la alerta exista
+        // Obtener la alerta
         AlertDomain alert = alertRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Alerta no encontrada con id: " + id));
 
+        // Obtener el cultivo para verificar el propietario
+        CropDomain crop = cropRepository.findById(alert.getCropId())
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + alert.getCropId()));
+
+        // Verificar que el usuario actual sea el propietario del cultivo
+        boolean isOwner = crop.getUserId().equals(currentUser.getId());
+
+        if (!isOwner) {
+            throw new AccessDeniedException("No tiene permisos para eliminar esta alerta");
+        }
+
         alertRepository.deleteById(id);
     }
+
 
     /**
      * Convierte un objeto AlertDomain en un DTO de respuesta.

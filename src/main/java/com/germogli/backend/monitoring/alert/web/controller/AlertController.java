@@ -9,12 +9,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * Controlador REST para la gestión de alertas.
- * Proporciona endpoints para crear y consultar alertas.
+ * Proporciona endpoints para consultar y eliminar alertas.
  */
 @RestController
 @RequestMapping("/alerts")
@@ -55,16 +54,29 @@ public class AlertController {
                 .build());
     }
 
+    /**
+     * Endpoint para obtener todas las alertas del usuario autenticado.
+     *
+     * @return Respuesta API con la lista de alertas del usuario.
+     */
+    @GetMapping("/user")
+    public ResponseEntity<ApiResponseDTO<List<AlertResponseDTO>>> getUserAlerts() {
+        List<AlertResponseDTO> alerts = alertDomainService.toResponseList(
+                alertDomainService.getUserAlerts());
+        return ResponseEntity.ok(ApiResponseDTO.<List<AlertResponseDTO>>builder()
+                .message("Alertas del usuario recuperadas correctamente")
+                .data(alerts)
+                .build());
+    }
 
     /**
      * Endpoint para eliminar una alerta.
-     * Solo los administradores pueden eliminar alertas.
+     * Solo el propietario del cultivo puede eliminar la alerta.
      *
      * @param id Identificador de la alerta a eliminar.
      * @return Respuesta API confirmando la eliminación.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ApiResponseDTO<Void>> deleteAlert(@PathVariable Integer id) {
         alertDomainService.deleteAlert(id);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()

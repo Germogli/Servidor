@@ -2,6 +2,7 @@ package com.germogli.backend.monitoring.sensor.domain.repository;
 
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,6 +56,26 @@ public interface SensorDomainRepository {
      * @param sensorId Identificador del sensor.
      */
     void addSensorToCrop(Integer cropId, Integer sensorId);
+
+    /**
+     * Asocia un sensor a un cultivo con umbrales personalizados.
+     *
+     * @param cropId Identificador del cultivo.
+     * @param sensorId Identificador del sensor.
+     * @param minThreshold Umbral mínimo.
+     * @param maxThreshold Umbral máximo.
+     */
+    void addSensorToCropWithThresholds(Integer cropId, Integer sensorId, BigDecimal minThreshold, BigDecimal maxThreshold);
+
+    /**
+     * Actualiza los umbrales de un sensor asociado a un cultivo.
+     *
+     * @param cropId Identificador del cultivo.
+     * @param sensorId Identificador del sensor.
+     * @param minThreshold Nuevo umbral mínimo.
+     * @param maxThreshold Nuevo umbral máximo.
+     */
+    void updateSensorThresholds(Integer cropId, Integer sensorId, BigDecimal minThreshold, BigDecimal maxThreshold);
 
     /**
      * Desasocia un sensor de un cultivo.

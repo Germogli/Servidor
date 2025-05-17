@@ -60,4 +60,21 @@ public interface AlertDomainRepository {
      * @return Alerta procesada.
      */
     AlertDomain processAlert(Integer cropId, Integer sensorId, String alertLevel, String alertMessage);
+
+
+    /**
+     * Encuentra todas las alertas de un nivel específico
+     * @param alertLevel
+     * @return lista de alertas del nivel
+     */
+    List<AlertDomain> findByAlertLevel(String alertLevel);
+
+    /**
+     *  Encuentra todas las alertas de un cultivo específico en un rango de fechas
+     * @param cropId
+     * @param startDate
+     * @param endDate
+     * @return lista de alertas del cultivo en el rango de fechas
+     */
+    List<AlertDomain> findByCropIdAndDateRange(Integer cropId, LocalDateTime startDate, LocalDateTime endDate);
 }
