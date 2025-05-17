@@ -84,4 +84,18 @@ public interface SensorDomainRepository {
      * @param sensorId Identificador del sensor.
      */
     void removeSensorFromCrop(Integer cropId, Integer sensorId);
+    /**
+     * Crea un nuevo sensor y lo asocia inmediatamente a un cultivo con umbrales personalizados.
+     *
+     * @param sensorType Tipo de sensor
+     * @param unitOfMeasurement Unidad de medida
+     * @param cropId ID del cultivo a asociar
+     * @param minThreshold Valor mínimo aceptable
+     * @param maxThreshold Valor máximo aceptable
+     * @return Objeto SensorDomain creado
+     */
+    SensorDomain createAndAssociateToCrop(String sensorType, String unitOfMeasurement,
+                                          Integer cropId, BigDecimal minThreshold,
+                                          BigDecimal maxThreshold);
+
 }
