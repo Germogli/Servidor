@@ -222,9 +222,29 @@ public class PostDomainService {
         if (url == null || url.isEmpty()) {
             return "";
         }
-        int lastSlash = url.lastIndexOf('/');
-        int queryIndex = url.indexOf('?', lastSlash);
-        return (queryIndex > lastSlash) ? url.substring(lastSlash + 1, queryIndex) : url.substring(lastSlash + 1);
+
+        try {
+            // Extraer la parte después del último '/'
+            int lastSlashIndex = url.lastIndexOf('/');
+            if (lastSlashIndex == -1) {
+                return "";
+            }
+
+            String fileName = url.substring(lastSlashIndex + 1);
+
+            // Eliminar cualquier parámetro de consulta (después de ?)
+            int queryIndex = fileName.indexOf('?');
+            if (queryIndex != -1) {
+                fileName = fileName.substring(0, queryIndex);
+            }
+
+            // Importante: NO decodificar el nombre del archivo aquí
+            // Simplemente devolver el nombre del archivo tal como está en la URL
+            return fileName;
+        } catch (Exception e) {
+            System.err.println("Error al extraer nombre de archivo: " + e.getMessage());
+            return "";
+        }
     }
 
     /**
@@ -234,12 +254,27 @@ public class PostDomainService {
      * @return DTO con la información del post.
      */
     public PostResponseDTO toResponse(PostDomain post) {
+        String secureUrl = post.getMultimediaContent();
+
+        // Generar URL segura con SAS token si hay contenido multimedia
+        if (secureUrl != null && !secureUrl.isEmpty() &&
+                secureUrl.contains("germoglistorage.blob.core.windows.net/publicaciones")) {
+            // Extraer el nombre del archivo desde la URL
+            String fileName = extractBlobNameFromUrl(secureUrl);
+            // Generar token SAS con duración de 6 horas
+            secureUrl = azureBlobStorageService.generateSasToken(
+                    "publicaciones",
+                    fileName,
+                    360  // 6 horas de duración
+            );
+        }
+
         return PostResponseDTO.builder()
                 .id(post.getId())
                 .userId(post.getUserId())
                 .postType(post.getPostType())
                 .content(post.getContent())
-                .multimediaContent(post.getMultimediaContent())
+                .multimediaContent(secureUrl) // URL con token SAS
                 .postDate(post.getPostDate())
                 .groupId(post.getGroupId())
                 .threadId(post.getThreadId())

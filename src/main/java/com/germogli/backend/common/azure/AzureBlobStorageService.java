@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -39,28 +40,59 @@ public class AzureBlobStorageService {
      * @return URL firmada para acceso temporal
      */
     public String generateSasToken(String containerName, String blobName, int expirationMinutes) {
-        // Obtener el cliente del contenedor
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+        try {
+            // Obtener el cliente del contenedor
+            BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
 
-        // Obtener el cliente del blob específico
-        BlobClient blobClient = containerClient.getBlobClient(blobName);
+            // IMPORTANTE: NO codificar el nombre del blob aquí - Azure SDK lo hará por nosotros
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
 
-        // Definir permisos para el token SAS (lectura en este caso)
-        BlobSasPermission sasPermission = new BlobSasPermission()
-                .setReadPermission(true);
+            // Verificar si el blob existe y mostrar mensaje de diagnóstico
+            boolean exists = blobClient.exists();
+            System.out.println("Verificando blob '" + blobName + "': " + (exists ? "EXISTE" : "NO EXISTE"));
 
-        // Calcular tiempo de expiración
-        OffsetDateTime expirationTime = OffsetDateTime.now().plusMinutes(expirationMinutes);
+            if (!exists) {
+                // Listar algunos blobs para diagnóstico
+                System.out.println("Blobs en el contenedor:");
+                containerClient.listBlobs().iterator().forEachRemaining(
+                        blob -> System.out.println(" - " + blob.getName())
+                );
 
-        // Generar valores para la firma SAS
-        BlobServiceSasSignatureValues sasSignatureValues = new BlobServiceSasSignatureValues(expirationTime, sasPermission)
-                .setProtocol(SasProtocol.HTTPS_ONLY);  // Solo permitir conexiones seguras
+                // Intentar con un nombre URL-encoded por si acaso
+                String encodedName = URLEncoder.encode(blobName, StandardCharsets.UTF_8.name())
+                        .replace("+", "%20"); // Importante: reemplazar + por %20 para espacios
+                blobClient = containerClient.getBlobClient(encodedName);
+                exists = blobClient.exists();
+                System.out.println("Verificando blob codificado '" + encodedName + "': " + (exists ? "EXISTE" : "NO EXISTE"));
+            }
 
-        // Generar el token SAS
-        String sasToken = blobClient.generateSas(sasSignatureValues);
+            if (!exists) {
+                return ""; // O retornar una URL por defecto
+            }
 
-        // Construir URL con token SAS
-        return blobClient.getBlobUrl() + "?" + sasToken;
+            // Definir permisos para el token SAS (lectura en este caso)
+            BlobSasPermission sasPermission = new BlobSasPermission()
+                    .setReadPermission(true);
+
+            // Calcular tiempo de expiración
+            OffsetDateTime expirationTime = OffsetDateTime.now().plusMinutes(expirationMinutes);
+
+            // Generar valores para la firma SAS
+            BlobServiceSasSignatureValues sasSignatureValues = new BlobServiceSasSignatureValues(expirationTime, sasPermission)
+                    .setProtocol(SasProtocol.HTTPS_HTTP);  // Permitir conexiones HTTP y HTTPS
+
+            // Generar el token SAS
+            String sasToken = blobClient.generateSas(sasSignatureValues);
+
+            // Construir URL con token SAS
+            String fullUrl = blobClient.getBlobUrl() + "?" + sasToken;
+            System.out.println("URL con SAS generada: " + fullUrl);
+            return fullUrl;
+        } catch (Exception e) {
+            System.err.println("Error generando SAS token: " + e.getMessage());
+            e.printStackTrace();
+            return "";
+        }
     }
 
     /**
