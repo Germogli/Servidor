@@ -88,9 +88,17 @@ public class CommunitySharedService {
      * @return true si el usuario pertenece al grupo, false en caso contrario
      */
     public boolean isUserInGroup(Integer userId, Integer groupId) {
-        // Esta lógica dependerá de la implementación existente
-        // Podría usar userGroupCrudRepository para verificar
         return groupRepository.isUserInGroup(userId, groupId);
+    }
+
+    /**
+     * Verifica si existe un grupo.
+     *
+     * @param groupId ID del grupo
+     * @return true si el grupo existe, false en caso contrario
+     */
+    public boolean existsById(Integer groupId) {
+        return groupRepository.existsById(groupId);
     }
 
 

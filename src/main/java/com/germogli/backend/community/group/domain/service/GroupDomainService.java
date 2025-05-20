@@ -203,8 +203,7 @@ public class GroupDomainService {
         // Si no se proporciona ID, usar el usuario autenticado
         Integer targetUserId = userId;
         if (targetUserId == null) {
-            UserDomain currentUser = sharedService.getAuthenticatedUser();
-            targetUserId = currentUser.getId();
+            targetUserId = sharedService.getAuthenticatedUser().getId();
         }
 
         return groupRepository.findGroupsByUserId(targetUserId);
@@ -221,12 +220,12 @@ public class GroupDomainService {
         // Verificar que el grupo existe utilizando el servicio compartido
         sharedService.validateGroupExists(groupId);
 
-        // Obtener el usuario autenticado
-        UserDomain currentUser = sharedService.getAuthenticatedUser();
+        // Obtener el usuario autenticado desde el servicio compartido
+        Integer currentUserId = sharedService.getAuthenticatedUser().getId();
 
         // Crear la clave compuesta para verificar la membresía
         UserGroupId userGroupId = UserGroupId.builder()
-                .userId(currentUser.getId())
+                .userId(currentUserId)
                 .groupId(groupId)
                 .build();
 
@@ -240,11 +239,11 @@ public class GroupDomainService {
                 .orElseThrow(() -> new ResourceNotFoundException("Grupo no encontrado con id: " + groupId));
 
         // Eliminar la relación - utilizando el repositorio del dominio
-        groupRepository.leaveGroup(currentUser.getId(), groupId);
+        groupRepository.leaveGroup(currentUserId, groupId);
 
         // Notificar al usuario que ha abandonado el grupo
         String message = "Has abandonado el grupo: " + group.getName();
-        notificationService.sendNotification(currentUser.getId(), message, "group");
+        notificationService.sendNotification(currentUserId, message, "group");
     }
 
     /**

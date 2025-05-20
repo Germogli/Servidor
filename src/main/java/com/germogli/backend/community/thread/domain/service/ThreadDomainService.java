@@ -193,9 +193,7 @@ public class ThreadDomainService {
      */
     public List<ThreadDomain> getThreadsByGroupId(Integer groupId) {
         // Verificar que el grupo exista
-        if (groupId != null && sharedService.existsById(groupId)) {
-            throw new ResourceNotFoundException("Grupo no encontrado con id: " + groupId);
-        }
+        sharedService.validateGroupExists(groupId);
 
         List<ThreadDomain> threads = threadRepository.findThreadsByGroupId(groupId);
         return threads.stream()
