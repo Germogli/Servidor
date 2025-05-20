@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Permite solicitudes preflight OPTIONS
                         .requestMatchers("/auth/**").permitAll() // Permite el acceso público a endpoints de autenticación
                         .requestMatchers("/ws/**").permitAll() // Permite el acceso al endpoint WebSocket
+                        .requestMatchers("/readings/device/**").permitAll() // Permite el acceso público a endpoints de lectura de sensores
                         .anyRequest().authenticated() // Resto de solicitudes requieren autenticación
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Política sin estado
@@ -64,11 +65,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // Dominios permitidos (ajustar según entorno)
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",   // React default
-                "http://localhost:5173",   // Vite dev server
-                "http://127.0.0.1:5173"    // Vite dev server alternativo
-        ));
+        configuration.setAllowedOrigins(Arrays.asList("*"));
 
         // Métodos HTTP permitidos
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));

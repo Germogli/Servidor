@@ -8,6 +8,7 @@ import com.germogli.backend.monitoring.alert.domain.model.AlertDomain;
 import com.germogli.backend.monitoring.alert.domain.repository.AlertDomainRepository;
 import com.germogli.backend.monitoring.crop.domain.model.CropDomain;
 import com.germogli.backend.monitoring.crop.domain.repository.CropDomainRepository;
+import com.germogli.backend.monitoring.reading.application.dto.DeviceReadingRequestDTO;
 import com.germogli.backend.monitoring.reading.application.dto.ReadingBatchRequestDTO;
 import com.germogli.backend.monitoring.reading.application.dto.ReadingRequestDTO;
 import com.germogli.backend.monitoring.reading.application.dto.ReadingResponseDTO;
@@ -344,6 +345,85 @@ public class ReadingDomainService {
 
         return readingRepository.findByCropIdAndSensorIdAndDateRange(
                 cropId, sensorId, effectiveStartDate, effectiveEndDate, effectiveLimit);
+    }
+    /**
+     * Procesa lecturas provenientes directamente de un dispositivo ESP32.
+     * Identifica los sensores correspondientes por tipo y registra las lecturas.
+     *
+     * @param deviceId ID del dispositivo (para registro)
+     * @param cropId ID del cultivo al que pertenecen las lecturas
+     * @param requestDTO DTO con los datos de temperatura, humedad y TDS
+     * @return Lista de lecturas procesadas
+     */
+    @Transactional
+    public List<ReadingDomain> processDeviceReadings(Integer deviceId, Integer cropId, DeviceReadingRequestDTO requestDTO) {
+        // Verificar que el cultivo exista
+        CropDomain crop = cropRepository.findById(cropId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
+
+        List<ReadingDomain> readings = new ArrayList<>();
+        LocalDateTime timestamp = LocalDateTime.now();
+
+        // Mapear los sensores por tipo (asumiendo que ya existen en la BD)
+        Map<String, SensorDomain> sensorsByType = getSensorsByTypeForCrop(cropId);
+
+        // Procesar temperatura si hay datos y existe el sensor
+        if (requestDTO.getTemperature() != null && sensorsByType.containsKey("temperature")) {
+            SensorDomain tempSensor = sensorsByType.get("temperature");
+            ReadingDomain reading = ReadingDomain.builder()
+                    .cropId(cropId)
+                    .sensorId(tempSensor.getId())
+                    .readingValue(requestDTO.getTemperature())
+                    .readingDate(timestamp)
+                    .build();
+
+            readings.add(readingRepository.save(reading));
+            checkThresholdsAndCreateAlert(reading, tempSensor);
+        }
+
+        // Procesar humedad si hay datos y existe el sensor
+        if (requestDTO.getHumedad() != null && sensorsByType.containsKey("humidity")) {
+            SensorDomain humiditySensor = sensorsByType.get("humidity");
+            ReadingDomain reading = ReadingDomain.builder()
+                    .cropId(cropId)
+                    .sensorId(humiditySensor.getId())
+                    .readingValue(requestDTO.getHumedad())
+                    .readingDate(timestamp)
+                    .build();
+
+            readings.add(readingRepository.save(reading));
+            checkThresholdsAndCreateAlert(reading, humiditySensor);
+        }
+
+        // Procesar TDS si hay datos y existe el sensor
+        if (requestDTO.getTds() != null && sensorsByType.containsKey("tds")) {
+            SensorDomain tdsSensor = sensorsByType.get("tds");
+            ReadingDomain reading = ReadingDomain.builder()
+                    .cropId(cropId)
+                    .sensorId(tdsSensor.getId())
+                    .readingValue(requestDTO.getTds())
+                    .readingDate(timestamp)
+                    .build();
+
+            readings.add(readingRepository.save(reading));
+            checkThresholdsAndCreateAlert(reading, tdsSensor);
+        }
+
+        return readings;
+    }
+
+    /**
+     * Método auxiliar para obtener los sensores asociados a un cultivo, mapeados por tipo.
+     */
+    private Map<String, SensorDomain> getSensorsByTypeForCrop(Integer cropId) {
+        List<SensorDomain> sensors = sensorRepository.findByCropId(cropId);
+        Map<String, SensorDomain> sensorsByType = new HashMap<>();
+
+        for (SensorDomain sensor : sensors) {
+            sensorsByType.put(sensor.getSensorType().toLowerCase(), sensor);
+        }
+
+        return sensorsByType;
     }
 
     /**
