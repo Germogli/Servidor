@@ -13,4 +13,7 @@ public interface GroupDomainRepository {
     List<GroupDomain> findAll();
     void deleteById(Integer id);
     boolean existsById(Integer id);
+    List<GroupDomain> findGroupsByUserId(Integer userId);
+    boolean isUserInGroup(Integer userId, Integer groupId);
+    void leaveGroup(Integer userId, Integer groupId);
 }

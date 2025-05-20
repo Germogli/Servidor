@@ -25,10 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -342,5 +339,39 @@ public class PostDomainService {
         // Finalizar la subida
         blockBlobClient.commitBlockList(blockIds);
         return blobClient.getBlobUrl();
+    }
+    /**
+     * Obtiene todas las publicaciones que pertenecen a un grupo específico.
+     *
+     * @param groupId ID del grupo
+     * @return Lista de publicaciones del grupo
+     * @throws ResourceNotFoundException si no existe el grupo
+     */
+    public List<PostDomain> getPostsByGroupId(Integer groupId) {
+        // Utiliza el servicio compartido para validar la existencia del grupo
+        sharedService.validateGroupExists(groupId);
+
+        List<PostDomain> posts = postRepository.findByGroupId(groupId);
+        if (posts.isEmpty()) {
+            return Collections.emptyList(); // Devuelve lista vacía en lugar de error
+        }
+        return posts;
+    }
+    /**
+     * Obtiene todas las publicaciones creadas por un usuario específico.
+     * Si no se proporciona ID, usa el usuario autenticado actual.
+     *
+     * @param userId ID del usuario o null para usar el usuario autenticado
+     * @return Lista de publicaciones del usuario
+     */
+    public List<PostDomain> getPostsByUserId(Integer userId) {
+        // Si no se proporciona ID, usar el usuario autenticado
+        Integer targetUserId = userId;
+        if (targetUserId == null) {
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+            targetUserId = currentUser.getId();
+        }
+
+        return postRepository.findByUserId(targetUserId);
     }
 }

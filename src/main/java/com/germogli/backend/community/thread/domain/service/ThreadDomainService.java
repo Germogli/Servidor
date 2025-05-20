@@ -29,6 +29,7 @@ public class ThreadDomainService {
     private final CommunitySharedService sharedService;
     private final NotificationService notificationService;
 
+
     /**
      * Crea un nuevo hilo.
      * Se establece la fecha de creación y se puede calcular la fecha de expiración (2 días).
@@ -182,5 +183,57 @@ public class ThreadDomainService {
                 "Hilo eliminado por el sistema",
                 "thread"
         );
+    }
+    /**
+     * Obtiene todos los hilos que pertenecen a un grupo específico.
+     *
+     * @param groupId ID del grupo
+     * @return Lista de hilos del grupo
+     * @throws ResourceNotFoundException si no se encuentran hilos en el grupo
+     */
+    public List<ThreadDomain> getThreadsByGroupId(Integer groupId) {
+        // Verificar que el grupo exista
+        if (groupId != null && sharedService.existsById(groupId)) {
+            throw new ResourceNotFoundException("Grupo no encontrado con id: " + groupId);
+        }
+
+        List<ThreadDomain> threads = threadRepository.findThreadsByGroupId(groupId);
+        return threads.stream()
+                .filter(t -> t.getCreationDate().plusDays(2).isAfter(LocalDateTime.now()))
+                .collect(Collectors.toList());
+    }
+    /**
+     * Obtiene todos los hilos que pertenecen al foro general (sin grupo asociado).
+     *
+     * @return Lista de hilos del foro
+     */
+    public List<ThreadDomain> getForumThreads() {
+        List<ThreadDomain> threads = threadRepository.findForumThreads();
+        return threads.stream()
+                .filter(t -> t.getCreationDate().plusDays(2).isAfter(LocalDateTime.now()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Obtiene todos los hilos creados por un usuario específico.
+     * Incluye tanto hilos del foro como hilos de grupos.
+     *
+     * @param userId ID del usuario o null para usar el usuario autenticado actual
+     * @return Lista de hilos del usuario
+     */
+    public List<ThreadDomain> getThreadsByUserId(Integer userId) {
+        // Si no se proporciona ID, usar el usuario autenticado
+        Integer targetUserId = userId;
+        if (targetUserId == null) {
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+            targetUserId = currentUser.getId();
+        }
+
+        final Integer finalUserId = targetUserId;
+
+        List<ThreadDomain> threads = threadRepository.findThreadsByUserId(finalUserId);
+        return threads.stream()
+                .filter(t -> t.getCreationDate().plusDays(2).isAfter(LocalDateTime.now()))
+                .collect(Collectors.toList());
     }
 }

@@ -71,6 +71,54 @@ public class ThreadController {
                 .data(threads)
                 .build());
     }
+    // Endpoints existentes
+
+    /**
+     * Endpoint para obtener hilos de un grupo específico.
+     *
+     * @param groupId ID del grupo
+     * @return Respuesta API con la lista de hilos del grupo
+     */
+    @GetMapping("/by-group/{groupId}")
+    public ResponseEntity<ApiResponseDTO<List<ThreadResponseDTO>>> getThreadsByGroupId(@PathVariable Integer groupId) {
+        List<ThreadResponseDTO> threads = threadDomainService.toThreadResponseList(
+                threadDomainService.getThreadsByGroupId(groupId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<ThreadResponseDTO>>builder()
+                .message("Hilos del grupo recuperados correctamente")
+                .data(threads)
+                .build());
+    }
+    /**
+     * Endpoint para obtener hilos creados por un usuario específico.
+     * Si no se proporciona userId, se usará el usuario autenticado.
+     *
+     * @param userId ID del usuario (opcional)
+     * @return Respuesta API con la lista de hilos del usuario
+     */
+    @GetMapping("/by-user")
+    public ResponseEntity<ApiResponseDTO<List<ThreadResponseDTO>>> getThreadsByUserId(
+            @RequestParam(required = false) Integer userId) {
+        List<ThreadResponseDTO> threads = threadDomainService.toThreadResponseList(
+                threadDomainService.getThreadsByUserId(userId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<ThreadResponseDTO>>builder()
+                .message("Hilos del usuario recuperados correctamente")
+                .data(threads)
+                .build());
+    }
+    /**
+     * Endpoint para obtener hilos del foro general (sin grupo asociado).
+     *
+     * @return Respuesta API con la lista de hilos del foro
+     */
+    @GetMapping("/forum")
+    public ResponseEntity<ApiResponseDTO<List<ThreadResponseDTO>>> getForumThreads() {
+        List<ThreadResponseDTO> threads = threadDomainService.toThreadResponseList(
+                threadDomainService.getForumThreads());
+        return ResponseEntity.ok(ApiResponseDTO.<List<ThreadResponseDTO>>builder()
+                .message("Hilos del foro recuperados correctamente")
+                .data(threads)
+                .build());
+    }
 
     /**
      * Endpoint para actualizar un hilo.

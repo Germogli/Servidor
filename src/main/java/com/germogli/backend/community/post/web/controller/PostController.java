@@ -112,4 +112,36 @@ public class PostController {
                 .message("Publicación eliminada correctamente")
                 .build());
     }
+    /**
+     * Endpoint para listar publicaciones de un grupo específico.
+     *
+     * @param groupId ID del grupo
+     * @return Respuesta API con la lista de publicaciones del grupo
+     */
+    @GetMapping("/by-group/{groupId}")
+    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByGroupId(@PathVariable Integer groupId) {
+        List<PostResponseDTO> posts = postDomainService.toResponseList(
+                postDomainService.getPostsByGroupId(groupId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
+                .message("Publicaciones del grupo recuperadas correctamente")
+                .data(posts)
+                .build());
+    }
+    /**
+     * Endpoint para listar publicaciones de un usuario específico.
+     * Si no se proporciona userId, se usará el usuario autenticado.
+     *
+     * @param userId ID del usuario (opcional)
+     * @return Respuesta API con la lista de publicaciones del usuario
+     */
+    @GetMapping("/by-user")
+    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByUserId(
+            @RequestParam(required = false) Integer userId) {
+        List<PostResponseDTO> posts = postDomainService.toResponseList(
+                postDomainService.getPostsByUserId(userId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
+                .message("Publicaciones del usuario recuperadas correctamente")
+                .data(posts)
+                .build());
+    }
 }

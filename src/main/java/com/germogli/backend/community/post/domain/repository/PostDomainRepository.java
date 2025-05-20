@@ -13,4 +13,6 @@ public interface PostDomainRepository {
     List<PostDomain> findAll();
     void deleteById(Integer id);
     Integer findOwnerIdByPostId(Integer postId);
+    List<PostDomain> findByGroupId(Integer groupId);
+    List<PostDomain> findByUserId(Integer userId);
 }

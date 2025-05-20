@@ -1,5 +1,7 @@
 package com.germogli.backend.community.group.domain.service;
 
+
+import com.germogli.backend.common.exception.CustomForbiddenException;
 import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.common.exception.RoleNotAllowedException;
 import com.germogli.backend.common.notification.application.service.NotificationService;
@@ -188,6 +190,61 @@ public class GroupDomainService {
                 .description(group.getDescription())
                 .creationDate(group.getCreationDate())
                 .build();
+    }
+
+    /**
+     * Obtiene todos los grupos a los que un usuario se ha unido.
+     * Si no se proporciona ID, usa el usuario autenticado actual.
+     *
+     * @param userId ID del usuario o null para usar el usuario autenticado
+     * @return Lista de grupos a los que pertenece el usuario
+     */
+    public List<GroupDomain> getGroupsByUserId(Integer userId) {
+        // Si no se proporciona ID, usar el usuario autenticado
+        Integer targetUserId = userId;
+        if (targetUserId == null) {
+            UserDomain currentUser = sharedService.getAuthenticatedUser();
+            targetUserId = currentUser.getId();
+        }
+
+        return groupRepository.findGroupsByUserId(targetUserId);
+    }
+    /**
+     * Permite al usuario autenticado abandonar un grupo.
+     *
+     * @param groupId ID del grupo a abandonar
+     * @throws ResourceNotFoundException si el grupo no existe
+     * @throws CustomForbiddenException si el usuario no es miembro del grupo
+     */
+    @Transactional
+    public void leaveGroup(Integer groupId) {
+        // Verificar que el grupo existe utilizando el servicio compartido
+        sharedService.validateGroupExists(groupId);
+
+        // Obtener el usuario autenticado
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+        // Crear la clave compuesta para verificar la membresía
+        UserGroupId userGroupId = UserGroupId.builder()
+                .userId(currentUser.getId())
+                .groupId(groupId)
+                .build();
+
+        // Verificar que el usuario es miembro del grupo
+        if (!userGroupCrudRepository.existsById(userGroupId)) {
+            throw new CustomForbiddenException("No es miembro del grupo que intenta abandonar");
+        }
+
+        // Obtiene el objeto de grupo para obtener su nombre para la notificación
+        GroupDomain group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Grupo no encontrado con id: " + groupId));
+
+        // Eliminar la relación - utilizando el repositorio del dominio
+        groupRepository.leaveGroup(currentUser.getId(), groupId);
+
+        // Notificar al usuario que ha abandonado el grupo
+        String message = "Has abandonado el grupo: " + group.getName();
+        notificationService.sendNotification(currentUser.getId(), message, "group");
     }
 
     /**

@@ -70,6 +70,23 @@ public class GroupController {
                 .data(groups)
                 .build());
     }
+    /**
+     * Endpoint para listar grupos a los que un usuario se ha unido.
+     * Si no se proporciona userId, se usará el usuario autenticado.
+     *
+     * @param userId ID del usuario (opcional)
+     * @return Respuesta API con la lista de grupos del usuario
+     */
+    @GetMapping("/by-user")
+    public ResponseEntity<ApiResponseDTO<List<GroupResponseDTO>>> getGroupsByUserId(
+            @RequestParam(required = false) Integer userId) {
+        List<GroupResponseDTO> groups = groupDomainService.toResponseList(
+                groupDomainService.getGroupsByUserId(userId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<GroupResponseDTO>>builder()
+                .message("Grupos del usuario recuperados correctamente")
+                .data(groups)
+                .build());
+    }
 
     /**
      * Endpoint para actualizar la información de un grupo.
@@ -116,6 +133,20 @@ public class GroupController {
         groupDomainService.joinGroup(groupId);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
                 .message("Usuario unido al grupo correctamente")
+                .build());
+    }
+
+    /**
+     * Endpoint para que el usuario autenticado abandone un grupo.
+     *
+     * @param groupId ID del grupo a abandonar
+     * @return Respuesta API confirmando la acción
+     */
+    @PostMapping("/{groupId}/leave")
+    public ResponseEntity<ApiResponseDTO<Void>> leaveGroup(@PathVariable Integer groupId) {
+        groupDomainService.leaveGroup(groupId);
+        return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
+                .message("Usuario ha abandonado el grupo correctamente")
                 .build());
     }
 }

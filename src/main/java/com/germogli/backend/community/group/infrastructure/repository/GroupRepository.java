@@ -104,4 +104,38 @@ public class GroupRepository implements GroupDomainRepository {
         Long count = (Long) query.getSingleResult();
         return count > 0;
     }
+    @Override
+    @Transactional
+    public boolean isUserInGroup(Integer userId, Integer groupId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_is_user_in_group", Long.class);
+        query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_group_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_user_id", userId);
+        query.setParameter("p_group_id", groupId);
+        query.execute();
+        Long count = (Long) query.getSingleResult();
+        return count > 0;
+    }
+
+    @Override
+    @Transactional
+    public List<GroupDomain> findGroupsByUserId(Integer userId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_groups_by_user_id", GroupEntity.class);
+        query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_user_id", userId);
+        query.execute();
+        List<GroupEntity> resultList = query.getResultList();
+        return resultList.stream().map(GroupDomain::fromEntityStatic).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void leaveGroup(Integer userId, Integer groupId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_remove_user_from_group");
+        query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_group_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_user_id", userId);
+        query.setParameter("p_group_id", groupId);
+        query.execute();
+    }
 }

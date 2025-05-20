@@ -12,4 +12,7 @@ public interface ThreadDomainRepository {
     Optional<ThreadDomain> findThreadById(Integer id);
     List<ThreadDomain> findAllThreads();
     void deleteThreadById(Integer id);
+    List<ThreadDomain> findThreadsByGroupId(Integer groupId);
+    List<ThreadDomain> findThreadsByUserId(Integer userId);
+    List<ThreadDomain> findForumThreads();
 }

@@ -131,4 +131,30 @@ public class PostRepository implements PostDomainRepository {
 
         return ownerId;
     }
+
+    /**
+     * Obtiene las publicaciones de un grupo mediante sp_get_posts_by_group_id.
+     * @param groupId
+     * @return
+     */
+    @Override
+    @Transactional
+    public List<PostDomain> findByGroupId(Integer groupId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_posts_by_group_id", PostEntity.class);
+        query.registerStoredProcedureParameter("p_group_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_group_id", groupId);
+        query.execute();
+        List<PostEntity> resultList = query.getResultList();
+        return resultList.stream().map(PostDomain::fromEntityStatic).collect(Collectors.toList());
+    }
+    @Override
+    @Transactional
+    public List<PostDomain> findByUserId(Integer userId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_posts_by_user_id", PostEntity.class);
+        query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_user_id", userId);
+        query.execute();
+        List<PostEntity> resultList = query.getResultList();
+        return resultList.stream().map(PostDomain::fromEntityStatic).collect(Collectors.toList());
+    }
 }
