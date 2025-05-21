@@ -26,5 +26,10 @@ public class UpdatePostRequestDTO {
     @NotBlank(message = "El contenido es obligatorio")
     private String content;
 
+    /**
+     * Contenido multimedia.
+     * Si es null, significa que se desea eliminar el archivo multimedia existente.
+     * Si tiene valor, se mantendrá el archivo multimedia actual o se sustituirá por uno nuevo.
+     */
     private String multimediaContent;
 }

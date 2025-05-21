@@ -49,6 +49,28 @@ public class PostController {
     }
 
     /**
+     * Endpoint para actualizar una publicación con soporte para actualización de archivo multimedia.
+     *
+     * @param id Identificador de la publicación a actualizar
+     * @param updateRequest DTO con los datos a actualizar
+     * @param file Archivo multimedia opcional
+     * @return Respuesta API con la publicación actualizada
+     */
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@postSecurity.canUpdate(#id, principal)")
+    public ResponseEntity<ApiResponseDTO<PostResponseDTO>> updatePost(
+            @PathVariable Integer id,
+            @ModelAttribute @Valid UpdatePostRequestDTO updateRequest,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
+
+        PostDomain post = postDomainService.updatePost(id, updateRequest, file);
+        return ResponseEntity.ok(ApiResponseDTO.<PostResponseDTO>builder()
+                .message("Publicación actualizada correctamente")
+                .data(postDomainService.toResponse(post))
+                .build());
+    }
+
+    /**
      * Endpoint para obtener una publicación por su ID.
      *
      * @param id Identificador del post.
@@ -78,21 +100,36 @@ public class PostController {
     }
 
     /**
-     * Endpoint para actualizar una publicación.
-     * Solo el propietario o un administrador pueden actualizar el post.
+     * Endpoint para listar publicaciones de un grupo específico.
      *
-     * @param id      Identificador del post a actualizar.
-     * @param request DTO con los datos a actualizar.
-     * @return Respuesta API con la publicación actualizada.
+     * @param groupId ID del grupo
+     * @return Respuesta API con la lista de publicaciones del grupo
      */
-    @PutMapping("/{id}")
-    @PreAuthorize("@postSecurity.canUpdate(#id, principal)")
-    public ResponseEntity<ApiResponseDTO<PostResponseDTO>> updatePost(@PathVariable Integer id,
-                                                                      @Valid @RequestBody UpdatePostRequestDTO request) {
-        PostDomain post = postDomainService.updatePost(id, request);
-        return ResponseEntity.ok(ApiResponseDTO.<PostResponseDTO>builder()
-                .message("Publicación actualizada correctamente")
-                .data(postDomainService.toResponse(post))
+    @GetMapping("/by-group/{groupId}")
+    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByGroupId(@PathVariable Integer groupId) {
+        List<PostResponseDTO> posts = postDomainService.toResponseList(
+                postDomainService.getPostsByGroupId(groupId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
+                .message("Publicaciones del grupo recuperadas correctamente")
+                .data(posts)
+                .build());
+    }
+
+    /**
+     * Endpoint para listar publicaciones de un usuario específico.
+     * Si no se proporciona userId, se usará el usuario autenticado.
+     *
+     * @param userId ID del usuario (opcional)
+     * @return Respuesta API con la lista de publicaciones del usuario
+     */
+    @GetMapping("/by-user")
+    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByUserId(
+            @RequestParam(required = false) Integer userId) {
+        List<PostResponseDTO> posts = postDomainService.toResponseList(
+                postDomainService.getPostsByUserId(userId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
+                .message("Publicaciones del usuario recuperadas correctamente")
+                .data(posts)
                 .build());
     }
 
@@ -110,38 +147,6 @@ public class PostController {
         postDomainService.deletePost(id);
         return ResponseEntity.ok(ApiResponseDTO.<Void>builder()
                 .message("Publicación eliminada correctamente")
-                .build());
-    }
-    /**
-     * Endpoint para listar publicaciones de un grupo específico.
-     *
-     * @param groupId ID del grupo
-     * @return Respuesta API con la lista de publicaciones del grupo
-     */
-    @GetMapping("/by-group/{groupId}")
-    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByGroupId(@PathVariable Integer groupId) {
-        List<PostResponseDTO> posts = postDomainService.toResponseList(
-                postDomainService.getPostsByGroupId(groupId));
-        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
-                .message("Publicaciones del grupo recuperadas correctamente")
-                .data(posts)
-                .build());
-    }
-    /**
-     * Endpoint para listar publicaciones de un usuario específico.
-     * Si no se proporciona userId, se usará el usuario autenticado.
-     *
-     * @param userId ID del usuario (opcional)
-     * @return Respuesta API con la lista de publicaciones del usuario
-     */
-    @GetMapping("/by-user")
-    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByUserId(
-            @RequestParam(required = false) Integer userId) {
-        List<PostResponseDTO> posts = postDomainService.toResponseList(
-                postDomainService.getPostsByUserId(userId));
-        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
-                .message("Publicaciones del usuario recuperadas correctamente")
-                .data(posts)
                 .build());
     }
 }

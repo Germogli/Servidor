@@ -137,7 +137,7 @@ public class PostDomainService {
      * @throws AccessDeniedException si el usuario no tiene permisos.
      */
     @Transactional
-    public PostDomain updatePost(Integer id, UpdatePostRequestDTO request) {
+    public PostDomain updatePost(Integer id, UpdatePostRequestDTO request, MultipartFile file) {
         UserDomain currentUser = sharedService.getAuthenticatedUser();
         PostDomain existingPost = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post no encontrado con id: " + id));
@@ -148,15 +148,80 @@ public class PostDomainService {
             throw new AccessDeniedException("No tiene permisos para actualizar esta publicación.");
         }
 
+        // Valor inicial: se toma el valor que venga en el DTO o el contenido multimedia existente
+        String multimediaUrl = request.getMultimediaContent() != null
+                ? request.getMultimediaContent()
+                : existingPost.getMultimediaContent();
+
+        // Si hay un archivo nuevo, procesarlo
+        if (file != null && !file.isEmpty()) {
+            try {
+                // Eliminar el archivo anterior si existe
+                if (existingPost.getMultimediaContent() != null && !existingPost.getMultimediaContent().trim().isEmpty()) {
+                    String oldBlobName = extractBlobNameFromUrl(existingPost.getMultimediaContent());
+                    azureBlobStorageService.deleteBlob("publicaciones", oldBlobName);
+                }
+
+                // Verificar si es una imagen o un video
+                String contentType = file.getContentType();
+                if (contentType != null) {
+                    long fileSizeInMB = file.getSize() / (1024 * 1024);
+
+                    // Validación para imágenes
+                    if (contentType.startsWith("image/")) {
+                        if (fileSizeInMB > 10) {
+                            throw new CustomForbiddenException("La imagen excede el límite de 10MB. Su tamaño actual es de "
+                                    + fileSizeInMB + "MB.");
+                        }
+                    }
+                    // Validación para videos
+                    else if (contentType.startsWith("video/")) {
+                        if (fileSizeInMB > 1024) {
+                            throw new CustomForbiddenException("El video excede el límite de 1GB. Su tamaño actual es de "
+                                    + fileSizeInMB + "MB.");
+                        }
+
+                        // Para archivos grandes (videos), usar método de carga por bloques
+                        if (fileSizeInMB > 100) {
+                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" +
+                                    file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_");
+                            multimediaUrl = uploadLargeFileToAzure("publicaciones", fileName, file);
+                            return finalizePostUpdate(existingPost, request, multimediaUrl);
+                        }
+                    }
+                }
+
+                // Para archivos pequeños, continuar con el método original
+                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
+                multimediaUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("Error al subir el archivo a Azure Blob Storage", e);
+            }
+        }
+        // Si no hay archivo nuevo pero se quiere eliminar el actual
+        else if (request.getMultimediaContent() == null && existingPost.getMultimediaContent() != null) {
+            // Eliminar el archivo existente
+            String oldBlobName = extractBlobNameFromUrl(existingPost.getMultimediaContent());
+            azureBlobStorageService.deleteBlob("publicaciones", oldBlobName);
+            multimediaUrl = null;
+        }
+
+        return finalizePostUpdate(existingPost, request, multimediaUrl);
+    }
+
+    // Método auxiliar para finalizar la actualización del post
+    private PostDomain finalizePostUpdate(PostDomain existingPost, UpdatePostRequestDTO request, String multimediaUrl) {
         existingPost.setPostType(request.getPostType());
         existingPost.setContent(request.getContent());
-        // Se actualiza el campo multimediaContent según lo enviado en el DTO (sin archivo)
-        existingPost.setMultimediaContent(request.getMultimediaContent());
+        existingPost.setMultimediaContent(multimediaUrl);
         existingPost.setPostDate(LocalDateTime.now());
 
         PostDomain updatedPost = postRepository.save(existingPost);
 
-        if (isOwner) {
+        // Notificaciones
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+        if (existingPost.getUserId().equals(currentUser.getId())) {
             notificationService.sendNotification(
                     currentUser.getId(),
                     "Se ha actualizado tu publicación.",
