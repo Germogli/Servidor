@@ -20,6 +20,21 @@ public class UserDomainService {
 
     private final @Qualifier("userUserRepository")  UserDomainRepository userRepository;
 
+    /**
+     * Obtiene un usuario por su ID.
+     *
+     * @param userId ID del usuario a buscar.
+     * @return Usuario encontrado.
+     * @throws ResourceNotFoundException si no se encuentra el usuario.
+     */
+    public User getUserById(Integer userId) {
+        User user = userRepository.getUserById(userId);
+        if (user == null) {
+            throw new UserNotFoundException("No se encontró un usuario con el ID: " + userId);
+        }
+        return user;
+    }
+
     public void updateUserInfo(UpdateUserInfoDTO dto) {
         UserDetails authUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String authUsername = authUserDetails.getUsername();

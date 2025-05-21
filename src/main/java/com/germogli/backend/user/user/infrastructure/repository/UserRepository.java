@@ -1,5 +1,6 @@
 package com.germogli.backend.user.user.infrastructure.repository;
 
+import com.germogli.backend.common.exception.ResourceNotFoundException;
 import com.germogli.backend.user.role.domain.model.Role;
 import com.germogli.backend.user.user.domain.model.User;
 import com.germogli.backend.user.user.domain.repository.UserDomainRepository;
@@ -77,9 +78,18 @@ public class UserRepository implements UserDomainRepository {
 
     @Override
     public User getUserById(Integer id) {
-        return userUserCrudRepository.findById(id)
-                .map(this::convertToDomain)
-                .orElseThrow(() -> new RuntimeException("No se encontró un usuario con ID: " + id));
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_user_by_id", UserEntity.class);
+            query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
+            query.setParameter("p_user_id", id);
+            query.execute();
+            UserEntity entity = (UserEntity) query.getSingleResult();
+            return convertToDomain(entity);
+        } catch (NoResultException e) {
+            throw new ResourceNotFoundException("No se encontró un usuario con ID: " + id);
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener el usuario por ID");
+        }
     }
 
     private User convertToDomain(UserEntity entity) {

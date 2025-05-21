@@ -47,4 +47,19 @@ public class UserController {
                 .data(userDomainService.toResponseDTO(user))
                 .build());
     }
+
+    /**
+     * Obtiene un usuario por su ID.
+     *
+     * @param userId ID del usuario a buscar.
+     * @return ResponseEntity con la información del usuario en un ApiResponseDTO.
+     */
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponseDTO<UpdateUserInfoDTO>> getUserById(@PathVariable Integer userId) {
+        User user = userDomainService.getUserById(userId);
+        return ResponseEntity.ok(ApiResponseDTO.<UpdateUserInfoDTO>builder()
+                .message("Usuario recuperado correctamente")
+                .data(userDomainService.toResponseDTO(user))
+                .build());
+    }
 }
