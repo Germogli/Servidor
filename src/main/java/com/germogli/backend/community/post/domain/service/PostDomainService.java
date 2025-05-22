@@ -52,7 +52,6 @@ public class PostDomainService {
     @Transactional
     public PostDomain createPost(CreatePostRequestDTO request) {
         UserDomain currentUser = sharedService.getAuthenticatedUser();
-        // Valor inicial: se toma el valor que venga en el DTO (o vacío)
         String multimediaUrl = request.getMultimediaContent();
 
         // Procesar el archivo si se envía
@@ -80,8 +79,8 @@ public class PostDomainService {
 
                         // Para archivos grandes (videos), usar método de carga por bloques
                         if (fileSizeInMB > 100) {
-                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" +
-                                    file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_");
+                            String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
+                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
                             multimediaUrl = uploadLargeFileToAzure("publicaciones", fileName, file);
                             return finalizePostCreation(currentUser, request, multimediaUrl);
                         }
@@ -89,9 +88,30 @@ public class PostDomainService {
                 }
 
                 // Para archivos pequeños, continuar con el método original
-                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
+                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
+
+                // Subir archivo
                 azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
-                multimediaUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
+
+                // Obtener URL del archivo - Agregar verificación
+                String blobUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
+
+                // Si la URL está vacía, intentar construirla manualmente o verificar el blob
+                if (blobUrl == null || blobUrl.trim().isEmpty()) {
+                    // Log para debugging
+                    System.err.println("ADVERTENCIA: getBlobUrl retornó vacío para: " + fileName);
+
+                    // Verificar si el blob existe y obtener la URL con SAS token
+                    multimediaUrl = azureBlobStorageService.generateSasToken("publicaciones", fileName, 360);
+
+                    if (multimediaUrl == null || multimediaUrl.trim().isEmpty()) {
+                        throw new RuntimeException("No se pudo obtener la URL del archivo subido");
+                    }
+                } else {
+                    multimediaUrl = blobUrl;
+                }
+
             } catch (IOException e) {
                 throw new RuntimeException("Error al subir el archivo a Azure Blob Storage", e);
             }
@@ -148,7 +168,6 @@ public class PostDomainService {
             throw new AccessDeniedException("No tiene permisos para actualizar esta publicación.");
         }
 
-        // Valor inicial: se toma el valor que venga en el DTO o el contenido multimedia existente
         String multimediaUrl = request.getMultimediaContent() != null
                 ? request.getMultimediaContent()
                 : existingPost.getMultimediaContent();
@@ -183,8 +202,8 @@ public class PostDomainService {
 
                         // Para archivos grandes (videos), usar método de carga por bloques
                         if (fileSizeInMB > 100) {
-                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" +
-                                    file.getOriginalFilename().replaceAll("[^a-zA-Z0-9.-]", "_");
+                            String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
+                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
                             multimediaUrl = uploadLargeFileToAzure("publicaciones", fileName, file);
                             return finalizePostUpdate(existingPost, request, multimediaUrl);
                         }
@@ -192,9 +211,26 @@ public class PostDomainService {
                 }
 
                 // Para archivos pequeños, continuar con el método original
-                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
+                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
+
+                // Subir archivo
                 azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
-                multimediaUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
+
+                // Obtener URL del archivo con verificación
+                String blobUrl = azureBlobStorageService.getBlobUrl("publicaciones", fileName);
+
+                if (blobUrl == null || blobUrl.trim().isEmpty()) {
+                    System.err.println("ADVERTENCIA: getBlobUrl retornó vacío para: " + fileName);
+                    multimediaUrl = azureBlobStorageService.generateSasToken("publicaciones", fileName, 360);
+
+                    if (multimediaUrl == null || multimediaUrl.trim().isEmpty()) {
+                        throw new RuntimeException("No se pudo obtener la URL del archivo subido");
+                    }
+                } else {
+                    multimediaUrl = blobUrl;
+                }
+
             } catch (IOException e) {
                 throw new RuntimeException("Error al subir el archivo a Azure Blob Storage", e);
             }
@@ -438,5 +474,34 @@ public class PostDomainService {
         }
 
         return postRepository.findByUserId(targetUserId);
+    }
+
+    private String sanitizeFileName(String originalFileName) {
+        if (originalFileName == null || originalFileName.isEmpty()) {
+            return "file_" + System.currentTimeMillis();
+        }
+
+        // Separar nombre y extensión
+        String extension = "";
+        int lastDotIndex = originalFileName.lastIndexOf('.');
+        String baseName = originalFileName;
+
+        if (lastDotIndex > 0) {
+            extension = originalFileName.substring(lastDotIndex);
+            baseName = originalFileName.substring(0, lastDotIndex);
+        }
+
+        // Reemplazar espacios y caracteres especiales
+        baseName = baseName
+                .replaceAll("\\s+", "_")           // Reemplazar espacios por guiones bajos
+                .replaceAll("[^a-zA-Z0-9._-]", "") // Eliminar caracteres especiales excepto . _ -
+                .replaceAll("_{2,}", "_");         // Reemplazar múltiples guiones bajos por uno solo
+
+        // Si el nombre queda vacío después de la limpieza
+        if (baseName.isEmpty()) {
+            baseName = "file";
+        }
+
+        return baseName + extension;
     }
 }

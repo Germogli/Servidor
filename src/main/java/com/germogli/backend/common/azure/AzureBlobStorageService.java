@@ -44,30 +44,21 @@ public class AzureBlobStorageService {
             // Obtener el cliente del contenedor
             BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
 
-            // IMPORTANTE: NO codificar el nombre del blob aquí - Azure SDK lo hará por nosotros
+            // Obtener el cliente del blob directamente sin codificar
             BlobClient blobClient = containerClient.getBlobClient(blobName);
 
-            // Verificar si el blob existe y mostrar mensaje de diagnóstico
+            // Verificar si el blob existe
             boolean exists = blobClient.exists();
             System.out.println("Verificando blob '" + blobName + "': " + (exists ? "EXISTE" : "NO EXISTE"));
 
             if (!exists) {
-                // Listar algunos blobs para diagnóstico
+                // Si no existe con el nombre tal cual, listar blobs para diagnóstico
                 System.out.println("Blobs en el contenedor:");
                 containerClient.listBlobs().iterator().forEachRemaining(
                         blob -> System.out.println(" - " + blob.getName())
                 );
 
-                // Intentar con un nombre URL-encoded por si acaso
-                String encodedName = URLEncoder.encode(blobName, StandardCharsets.UTF_8.name())
-                        .replace("+", "%20"); // Importante: reemplazar + por %20 para espacios
-                blobClient = containerClient.getBlobClient(encodedName);
-                exists = blobClient.exists();
-                System.out.println("Verificando blob codificado '" + encodedName + "': " + (exists ? "EXISTE" : "NO EXISTE"));
-            }
-
-            if (!exists) {
-                return ""; // O retornar una URL por defecto
+                return ""; // Retornar cadena vacía si no existe
             }
 
             // Definir permisos para el token SAS (lectura en este caso)
@@ -79,7 +70,7 @@ public class AzureBlobStorageService {
 
             // Generar valores para la firma SAS
             BlobServiceSasSignatureValues sasSignatureValues = new BlobServiceSasSignatureValues(expirationTime, sasPermission)
-                    .setProtocol(SasProtocol.HTTPS_HTTP);  // Permitir conexiones HTTP y HTTPS
+                    .setProtocol(SasProtocol.HTTPS_HTTP);
 
             // Generar el token SAS
             String sasToken = blobClient.generateSas(sasSignatureValues);
@@ -87,7 +78,9 @@ public class AzureBlobStorageService {
             // Construir URL con token SAS
             String fullUrl = blobClient.getBlobUrl() + "?" + sasToken;
             System.out.println("URL con SAS generada: " + fullUrl);
+
             return fullUrl;
+
         } catch (Exception e) {
             System.err.println("Error generando SAS token: " + e.getMessage());
             e.printStackTrace();
@@ -103,13 +96,35 @@ public class AzureBlobStorageService {
      * @param data          Flujo de entrada (InputStream) con los datos del archivo.
      * @param length        Tamaño del archivo en bytes.
      */
-    public void uploadFile(String containerName, String blobName, InputStream data, long length) {
-        // Obtiene o crea el contenedor
-        BlobContainerClient containerClient = getOrCreateContainer(containerName);
-        // Obtiene una referencia al blob (archivo)
-        BlobClient blobClient = containerClient.getBlobClient(blobName);
-        // Sube el archivo al contenedor, sobrescribiendo si ya existe
-        blobClient.upload(data, length, true);
+    public String uploadFile(String containerName, String blobName, InputStream data, long length) {
+        try {
+            // Obtiene o crea el contenedor
+            BlobContainerClient containerClient = getOrCreateContainer(containerName);
+
+            // Obtiene una referencia al blob (archivo)
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+
+            // Sube el archivo al contenedor, sobrescribiendo si ya existe
+            blobClient.upload(data, length, true);
+
+            // Verificar que el blob se subió correctamente
+            if (!blobClient.exists()) {
+                throw new RuntimeException("El archivo no se pudo subir correctamente a Azure Blob Storage");
+            }
+
+            // Obtener y retornar la URL
+            String blobUrl = blobClient.getBlobUrl();
+
+            // Log para debugging
+            System.out.println("Archivo subido exitosamente: " + blobName);
+            System.out.println("URL generada: " + blobUrl);
+
+            return blobUrl;
+
+        } catch (Exception e) {
+            System.err.println("Error al subir archivo a Azure: " + e.getMessage());
+            throw new RuntimeException("Error al subir archivo a Azure Blob Storage", e);
+        }
     }
 
     /**
@@ -151,9 +166,25 @@ public class AzureBlobStorageService {
      * @return URL del blob.
      */
     public String getBlobUrl(String containerName, String blobName) {
-        BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
-        BlobClient blobClient = containerClient.getBlobClient(blobName);
-        return blobClient.getBlobUrl();
+        try {
+            BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+            BlobClient blobClient = containerClient.getBlobClient(blobName);
+
+            // Verificar que el blob existe
+            if (!blobClient.exists()) {
+                System.err.println("ADVERTENCIA: El blob no existe: " + blobName);
+                return "";
+            }
+
+            String url = blobClient.getBlobUrl();
+            System.out.println("URL obtenida para " + blobName + ": " + url);
+
+            return url != null ? url : "";
+
+        } catch (Exception e) {
+            System.err.println("Error al obtener URL del blob: " + e.getMessage());
+            return "";
+        }
     }
 
     /**
@@ -177,6 +208,8 @@ public class AzureBlobStorageService {
         int blockIndex = 0;
         int bytesRead;
 
+        System.out.println("Iniciando carga por bloques de archivo: " + blobName);
+
         while ((bytesRead = inputStream.read(buffer)) != -1) {
             String blockId = Base64.getEncoder().encodeToString(
                     String.format("%06d", blockIndex).getBytes(StandardCharsets.UTF_8));
@@ -190,9 +223,21 @@ public class AzureBlobStorageService {
             }
 
             blockIndex++;
+            System.out.println("Bloque " + blockIndex + " subido");
         }
 
+        // Confirmar todos los bloques
         blockBlobClient.commitBlockList(blockIds);
-        return blobClient.getBlobUrl();
+        System.out.println("Carga por bloques completada: " + blobName);
+
+        // Verificar que el blob existe después de la carga
+        if (!blobClient.exists()) {
+            throw new RuntimeException("El archivo no se pudo verificar después de la carga por bloques");
+        }
+
+        String url = blobClient.getBlobUrl();
+        System.out.println("URL del archivo grande: " + url);
+
+        return url;
     }
 }
