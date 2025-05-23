@@ -85,7 +85,6 @@ public class ThreadRepository implements ThreadDomainRepository {
         query.execute();
     }
     @Override
-    @Transactional(readOnly = true)
     public List<ThreadDomain> findThreadsByGroupId(Integer groupId) {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_threads_by_group_id", ThreadEntity.class);
         query.registerStoredProcedureParameter("p_group_id", Integer.class, ParameterMode.IN);
@@ -95,7 +94,6 @@ public class ThreadRepository implements ThreadDomainRepository {
         return resultList.stream().map(ThreadDomain::fromEntityStatic).collect(Collectors.toList());
     }
     @Override
-    @Transactional(readOnly = true)
     public List<ThreadDomain> findThreadsByUserId(Integer userId) {
         StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_threads_by_user_id", ThreadEntity.class);
         query.registerStoredProcedureParameter("p_user_id", Integer.class, ParameterMode.IN);
