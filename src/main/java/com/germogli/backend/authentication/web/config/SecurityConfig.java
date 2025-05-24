@@ -28,68 +28,72 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AuthenticationProvider authProvider;
 
-    /**
-     * Configura la cadena de filtros de seguridad con las reglas de acceso específicas.
-     * Define qué endpoints requieren autenticación y cuáles están disponibles públicamente.
-     *
-     * @param http Configuración de seguridad HTTP
-     * @return Cadena de filtros de seguridad configurada
-     * @throws Exception Si ocurre un error durante la configuración
-     */
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(csrf -> csrf.disable()) // Desactiva CSRF para simplificar la autenticación basada en tokens
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configuración CORS personalizada
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Permite solicitudes preflight OPTIONS
-                        .requestMatchers("/auth/**").permitAll() // Permite el acceso público a endpoints de autenticación
-                        .requestMatchers("/ws/**").permitAll() // Permite el acceso al endpoint WebSocket
-                        .requestMatchers("/readings/device/**").permitAll() // Permite el acceso público a endpoints de lectura de sensores
-                        .anyRequest().authenticated() // Resto de solicitudes requieren autenticación
-                )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Política sin estado
-                .authenticationProvider(authProvider) // Configura el AuthenticationProvider
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Agrega el filtro JWT
-                .build();
-    }
-
-    /**
-     * Configura las reglas CORS para permitir cookies en solicitudes cross-origin.
-     * Es esencial para que las cookies JWT funcionen correctamente en entornos de desarrollo.
-     *
-     * @return Fuente de configuración CORS
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Dominios permitidos (ajustar según entorno)
+        // ✅ ORÍGENES PERMITIDOS - Incluir Live Server y otros puertos comunes
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",   // React default
                 "http://localhost:5173",   // Vite dev server
-                "http://127.0.0.1:5173"    // Vite dev server alternativo
+                "http://127.0.0.1:5173",   // Vite dev server alternativo
+                "http://127.0.0.1:5500",   // ✅ Live Server VS Code
+                "http://localhost:5500",   // ✅ Live Server alternativo
+                "http://127.0.0.1:8080",   // ✅ Por si hay redirecciones locales
+                "http://localhost:8080"    // ✅ Por si hay redirecciones locales
         ));
 
-        // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // ✅ MÉTODOS HTTP PERMITIDOS
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+        ));
 
-        // Headers permitidos
+        // ✅ HEADERS PERMITIDOS
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
                 "X-Requested-With",
-                "Accept"
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "Cookie"  // ✅ IMPORTANTE para cookies JWT
         ));
 
-        // Permitir credenciales (cookies, autorización, etc.)
+        // ✅ HEADERS EXPUESTOS (que el cliente puede leer)
+        configuration.setExposedHeaders(Arrays.asList(
+                "Set-Cookie",
+                "Authorization"
+        ));
+
+        // ✅ PERMITIR CREDENCIALES (cookies, headers de autorización)
         configuration.setAllowCredentials(true);
 
-        // Duración de cache para respuestas preflight
+        // ✅ DURACIÓN DE CACHE para respuestas preflight (1 hora)
         configuration.setMaxAge(3600L);
 
+        // ✅ APLICAR A TODAS LAS RUTAS
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    // ✅ ASEGURAR QUE EL FILTRO JWT MANEJE COOKIES CORRECTAMENTE
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll() // ✅ IMPORTANTE: Permitir handshake WebSocket
+                        .requestMatchers("/readings/device/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 }

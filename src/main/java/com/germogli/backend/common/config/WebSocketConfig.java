@@ -1,6 +1,7 @@
 package com.germogli.backend.common.config;
 
-import com.germogli.backend.common.security.WebSocketSecurityInterceptor;
+import com.germogli.backend.common.security.WebSocketHandshakeInterceptor;
+import com.germogli.backend.common.security.WebSocketSessionSecurityInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,14 +15,17 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 /**
- * Configuración optimizada de WebSockets con manejo mejorado de autenticación.
+ * Configuración optimizada de WebSockets con autenticación por cookies JWT.
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Autowired
-    private WebSocketSecurityInterceptor webSocketSecurityInterceptor;
+    private WebSocketSessionSecurityInterceptor sessionSecurityInterceptor;
+
+    @Autowired
+    private WebSocketHandshakeInterceptor handshakeInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -39,39 +43,40 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Endpoint STOMP con SockJS y configuración optimizada
+        // Endpoint STOMP con autenticación por cookies
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // SOLUCIÓN: Usar patterns en lugar de origins
+                .setAllowedOriginPatterns("*") // Usar patterns para desarrollo
+                .addInterceptors(handshakeInterceptor) // ✅ AGREGAR interceptor de handshake
                 .withSockJS()
                 .setHeartbeatTime(25000)
                 .setDisconnectDelay(30000)
                 .setWebSocketEnabled(true)
-                .setSessionCookieNeeded(false);
+                .setSessionCookieNeeded(true); // ✅ CAMBIAR a true para cookies
     }
 
     /**
-     * IMPORTANTE: Aumentar límites de tamaño de mensaje para evitar
-     * problemas con tokens JWT grandes.
+     * Configuración de interceptores para canal de entrada.
+     * IMPORTANTE: Usar el nuevo interceptor de sesión en lugar del anterior.
+     */
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        // ✅ USAR el nuevo interceptor de sesión
+        registration.interceptors(sessionSecurityInterceptor);
+
+        // Configurar pool de hilos para mejor rendimiento
+        registration.taskExecutor()
+                .corePoolSize(4)
+                .maxPoolSize(10);
+    }
+
+    /**
+     * Aumentar límites de tamaño de mensaje para tokens JWT grandes.
      */
     @Override
     public void configureWebSocketTransport(WebSocketTransportRegistration registry) {
         registry.setMessageSizeLimit(128 * 1024); // 128KB
         registry.setSendBufferSizeLimit(512 * 1024); // 512KB
         registry.setSendTimeLimit(20000); // 20 segundos
-    }
-
-    /**
-     * Configuración de interceptores para canal de entrada.
-     */
-    @Override
-    public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(webSocketSecurityInterceptor);
-
-
-        // Configurar pool de hilos para mejor rendimiento
-        registration.taskExecutor()
-                .corePoolSize(4)
-                .maxPoolSize(10);
     }
 
     /**
