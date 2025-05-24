@@ -80,7 +80,7 @@ public class PostDomainService {
                         // Para archivos grandes (videos), usar método de carga por bloques
                         if (fileSizeInMB > 100) {
                             String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
-                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
+                            String fileName = currentUser.getId() + "" + System.currentTimeMillis() + "" + sanitizedFileName;
                             multimediaUrl = uploadLargeFileToAzure("publicaciones", fileName, file);
                             return finalizePostCreation(currentUser, request, multimediaUrl);
                         }
@@ -89,7 +89,7 @@ public class PostDomainService {
 
                 // Para archivos pequeños, continuar con el método original
                 String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
-                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
+                String fileName = currentUser.getId() + "" + System.currentTimeMillis() + "" + sanitizedFileName;
 
                 // Subir archivo
                 azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
@@ -203,7 +203,7 @@ public class PostDomainService {
                         // Para archivos grandes (videos), usar método de carga por bloques
                         if (fileSizeInMB > 100) {
                             String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
-                            String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
+                            String fileName = currentUser.getId() + "" + System.currentTimeMillis() + "" + sanitizedFileName;
                             multimediaUrl = uploadLargeFileToAzure("publicaciones", fileName, file);
                             return finalizePostUpdate(existingPost, request, multimediaUrl);
                         }
@@ -212,7 +212,7 @@ public class PostDomainService {
 
                 // Para archivos pequeños, continuar con el método original
                 String sanitizedFileName = sanitizeFileName(file.getOriginalFilename());
-                String fileName = currentUser.getId() + "_" + System.currentTimeMillis() + "_" + sanitizedFileName;
+                String fileName = currentUser.getId() + "" + System.currentTimeMillis() + "" + sanitizedFileName;
 
                 // Subir archivo
                 azureBlobStorageService.uploadFile("publicaciones", fileName, file.getInputStream(), file.getSize());
