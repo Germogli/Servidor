@@ -153,7 +153,7 @@ public class GroupDomainService {
         existingGroup.setName(request.getName());
         existingGroup.setDescription(request.getDescription());
         GroupDomain updatedGroup = groupRepository.save(existingGroup);
-        notificationService.sendNotification(null,
+        notificationService.sendNotification(sharedService.getAuthenticatedUser().getId(),
                 "El grupo " + request.getName() + " ha sido actualizado",
                 "group");
         return updatedGroup;
@@ -172,7 +172,7 @@ public class GroupDomainService {
             throw new ResourceNotFoundException("Grupo no encontrado con id: " + id);
         }
         groupRepository.deleteById(id);
-        notificationService.sendNotification(null,
+        notificationService.sendNotification(sharedService.getAuthenticatedUser().getId(),
                 "Se ha eliminado un grupo",
                 "group");
     }
