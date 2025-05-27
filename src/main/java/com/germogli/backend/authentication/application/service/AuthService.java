@@ -49,6 +49,7 @@ public class AuthService {
      */
     private UserInfoResponseDTO createUserInfoResponse(UserDomain userDomain) {
         return UserInfoResponseDTO.builder()
+                .id(userDomain.getId())
                 .username(userDomain.getUsername())
                 .email(userDomain.getEmail())
                 .firstName(userDomain.getFirstName())
