@@ -25,14 +25,16 @@ public class JwtCookieManager {
         // Crear cookie usando ResponseCookie builder (compatible con atributos modernos)
         ResponseCookie cookie = ResponseCookie.from(JwtService.JWT_COOKIE_NAME, token)
                 .httpOnly(true)               // Previene acceso JavaScript (protección XSS)
-                .secure(true)                 // Solo transmisión HTTPS
+                .secure(false)                 //// HTTP local permitido
                 .path("/")                    // Disponible en toda la aplicación
                 .maxAge(JwtService.JWT_COOKIE_EXPIRY_SECONDS)  // Duración de la cookie
-                .sameSite("Strict")           // Previene CSRF (no enviado en peticiones cross-site)
+                .sameSite("None")           //Menos restrictivo que Strict
                 .build();
 
         // Añadir cookie al header de la respuesta
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        //HEADER ADICIONAL para mejor compatibilidad cross-origin
+        response.addHeader("Access-Control-Expose-Headers", "Set-Cookie");
     }
 
     /**
