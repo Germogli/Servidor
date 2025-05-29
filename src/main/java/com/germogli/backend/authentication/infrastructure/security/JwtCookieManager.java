@@ -28,7 +28,7 @@ public class JwtCookieManager {
                 .secure(false)                 //// HTTP local permitido
                 .path("/")                    // Disponible en toda la aplicación
                 .maxAge(JwtService.JWT_COOKIE_EXPIRY_SECONDS)  // Duración de la cookie
-                .sameSite("None")           //Menos restrictivo que Strict
+                .sameSite("Lax")           //Menos restrictivo que Strict
                 .build();
 
         // Añadir cookie al header de la respuesta
