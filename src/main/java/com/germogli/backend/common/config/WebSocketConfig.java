@@ -51,7 +51,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setHeartbeatTime(25000)
                 .setDisconnectDelay(30000)
                 .setWebSocketEnabled(true)
-                .setSessionCookieNeeded(true); // ✅ CAMBIAR a true para cookies
+                .setSessionCookieNeeded(true) // ✅ CAMBIAR a true para cookies
+                .setSuppressCors(false);
     }
 
     /**

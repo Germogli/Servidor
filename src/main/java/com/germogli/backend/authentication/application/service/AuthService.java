@@ -87,9 +87,15 @@ public class AuthService {
                 userDomain.toUserDetails(),
                 userDomain.getRole().getRoleType()
         );
+        // 🔍 LOG TEMPORAL 1
+        System.out.println("🔑 LOGIN: Token generado exitosamente - length: " + token.length());
+
 
         // Establecer el token en una cookie HttpOnly
         jwtCookieManager.addJwtCookie(response, token);
+
+        // 🔍 LOG TEMPORAL 2
+        System.out.println("🍪 LOGIN: addJwtCookie() llamado correctamente");
 
         // Devolver información del usuario (sin el token)
         return createUserInfoResponse(userDomain);

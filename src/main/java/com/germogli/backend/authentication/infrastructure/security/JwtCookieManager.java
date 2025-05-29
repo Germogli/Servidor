@@ -33,6 +33,11 @@ public class JwtCookieManager {
 
         // Añadir cookie al header de la respuesta
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        // 🔍 LOG TEMPORAL 3
+        System.out.println("🍪 COOKIE SET: " + cookie.toString());
+        System.out.println("🍪 COOKIE NAME: " + JwtService.JWT_COOKIE_NAME);
+
         //HEADER ADICIONAL para mejor compatibilidad cross-origin
         response.addHeader("Access-Control-Expose-Headers", "Set-Cookie");
     }
