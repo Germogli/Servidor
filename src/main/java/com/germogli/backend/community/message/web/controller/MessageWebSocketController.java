@@ -1,14 +1,18 @@
 package com.germogli.backend.community.message.web.controller;
 
 import com.germogli.backend.authentication.domain.model.UserDomain;
+import com.germogli.backend.authentication.domain.repository.UserDomainRepository;
 import com.germogli.backend.common.exception.MessageDeliveryException;
 import com.germogli.backend.community.domain.service.CommunitySharedService;
 import com.germogli.backend.community.message.application.dto.CreateMessageRequestDTO;
+import com.germogli.backend.community.message.application.dto.MessageResponseDTO;
 import com.germogli.backend.community.message.application.dto.MessageWebSocketDTO;
 import com.germogli.backend.community.message.domain.model.MessageDomain;
 import com.germogli.backend.community.message.domain.service.MessageDomainService;
+import com.germogli.backend.community.message.infrastructure.cache.MessageCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -19,12 +23,14 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
 
 /**
  * Controlador para gestionar mensajes en tiempo real a través de WebSockets.
+ * ✅ ARREGLADO: Extrae identidad directamente del mensaje WebSocket para evitar contaminación cruzada
  */
 @Controller
 @RequiredArgsConstructor
@@ -34,48 +40,130 @@ public class MessageWebSocketController {
     private final MessageDomainService messageDomainService;
     private final CommunitySharedService sharedService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final MessageCache messageCache;
+
+    // ✅ INYECTAR: Repositorio para buscar usuario sin usar SecurityContext
+    @Qualifier("AuthenticationUserRepository")
+    private final UserDomainRepository userRepository;
 
     /**
-     * Verifica que el usuario esté autenticado correctamente.
-     * Implementa verificación explícita del SecurityContext.
-     *
-     * @param headerAccessor Acceso a headers STOMP para información adicional
-     * @return La autenticación verificada
-     * @throws AccessDeniedException si el usuario no está autenticado
+     * ✅ NUEVO: Extrae UserDomain directamente del mensaje WebSocket SIN usar SecurityContext global
      */
-    private Authentication checkAuthentication(SimpMessageHeaderAccessor headerAccessor) {
-        // Obtener autenticación directamente del contexto de seguridad
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    private UserDomain extractUserFromMessage(SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            // 1. Obtener Authentication directamente del mensaje WebSocket
+            Authentication auth = null;
 
-        // Loguear estado actual del contexto de seguridad
-        log.debug("Estado de SecurityContext al procesar mensaje: auth={}, principal={}",
-                auth != null,
-                auth != null ? auth.getPrincipal() : "null");
+            if (headerAccessor != null && headerAccessor.getUser() instanceof Authentication) {
+                auth = (Authentication) headerAccessor.getUser();
+                log.debug("🔍 Autenticación extraída del mensaje: {}", auth.getName());
+            }
 
-        // Si no está en el contexto, intentar recuperarla del mensaje
-        if ((auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null)
-                && headerAccessor != null && headerAccessor.getUser() != null) {
+            // 2. Si no está en el mensaje, intentar del contexto como fallback
+            if (auth == null) {
+                auth = SecurityContextHolder.getContext().getAuthentication();
+                log.debug("🔍 Autenticación extraída del contexto como fallback: {}",
+                        auth != null ? auth.getName() : "null");
+            }
 
-            log.debug("Autenticación no encontrada en SecurityContext, recuperando del mensaje");
-            auth = (Authentication) headerAccessor.getUser();
+            if (auth == null || !auth.isAuthenticated()) {
+                throw new AuthenticationCredentialsNotFoundException("No se encontró autenticación válida");
+            }
 
-            // Restaurar en el contexto de seguridad si se encuentra en mensaje
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            log.debug("Autenticación restaurada desde mensaje: {}", auth.getName());
+            // 3. ✅ CRÍTICO: Extraer username directamente de la Authentication
+            String username;
+            if (auth.getPrincipal() instanceof UserDetails) {
+                username = ((UserDetails) auth.getPrincipal()).getUsername();
+            } else {
+                username = auth.getName();
+            }
+
+            log.debug("👤 Username extraído: {}", username);
+
+            // 4. ✅ BUSCAR USER DIRECTAMENTE en repositorio SIN usar SecurityContext
+            UserDomain user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + username));
+
+            log.debug("✅ Usuario obtenido directamente: ID={}, username={}",
+                    user.getId(), user.getUsername());
+
+            return user;
+
+        } catch (Exception e) {
+            log.error("❌ Error extrayendo usuario del mensaje: {}", e.getMessage(), e);
+            throw new AuthenticationCredentialsNotFoundException("Error obteniendo identidad del usuario", e);
         }
-
-        // Verificación final - lanzar excepción si no está autenticado
-        if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-            log.error("⚠️ Usuario no autenticado intentando enviar mensaje");
-            throw new AuthenticationCredentialsNotFoundException(
-                    "No se encontró autenticación en el contexto de seguridad");
-        }
-
-        return auth;
     }
 
     /**
-     * Maneja mensajes enviados a grupos específicos.
+     * ✅ ACTUALIZADO: Usa identidad extraída directamente del mensaje
+     */
+    private MessageDomain persistMessage(MessageWebSocketDTO message, String contextType, UserDomain user) {
+
+        // ✅ TEMPORAL: Establecer contexto solo para la persistencia si es necesario
+        Authentication tempAuth = null;
+        boolean contextWasSet = false;
+
+        try {
+            // Verificar si hay contexto establecido
+            Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+            if (currentAuth == null || !currentAuth.isAuthenticated()) {
+                // Crear contexto temporal si es necesario para servicios que lo requieren
+                tempAuth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        user.toUserDetails(), null, user.toUserDetails().getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(tempAuth);
+                contextWasSet = true;
+                log.debug("🔒 Contexto temporal establecido para persistencia: {}", user.getUsername());
+            }
+
+            CreateMessageRequestDTO createRequest = CreateMessageRequestDTO.builder()
+                    .postId(message.getPostId())
+                    .content(message.getContent())
+                    .threadId(message.getThreadId())
+                    .groupId(message.getGroupId())
+                    .build();
+
+            MessageDomain savedMessage = messageDomainService.createMessage(createRequest);
+
+            // ✅ Actualizar caché
+            updateCacheAfterPersist(savedMessage, contextType);
+
+            return savedMessage;
+
+        } finally {
+            // ✅ LIMPIAR contexto temporal si lo establecimos
+            if (contextWasSet) {
+                SecurityContextHolder.clearContext();
+                log.debug("🧹 Contexto temporal limpiado");
+            }
+        }
+    }
+
+    /**
+     * ✅ MANTENER: Actualización de caché
+     */
+    private void updateCacheAfterPersist(MessageDomain savedMessage, String contextType) {
+        try {
+            MessageResponseDTO responseDTO = messageDomainService.toResponse(savedMessage);
+
+            Integer contextId = switch (contextType) {
+                case "group" -> savedMessage.getGroupId();
+                case "thread" -> savedMessage.getThreadId();
+                case "post" -> savedMessage.getPostId();
+                case "forum" -> null;
+                default -> throw new IllegalArgumentException("Tipo de contexto inválido: " + contextType);
+            };
+
+            messageCache.addMessage(contextType, contextId, responseDTO);
+            log.debug("✅ Caché actualizada: contexto={}, id={}", contextType, contextId);
+
+        } catch (Exception e) {
+            log.warn("⚠️ Error actualizando caché (no crítico): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * ✅ ARREGLADO: Usa identidad extraída directamente del mensaje
      */
     @MessageMapping("/message/group/{groupId}")
     public void handleGroupMessage(
@@ -83,33 +171,31 @@ public class MessageWebSocketController {
             @Payload MessageWebSocketDTO message,
             SimpMessageHeaderAccessor headerAccessor) {
 
-        log.info("Recibido mensaje para grupo: {}", groupId);
+        log.info("📥 Recibido mensaje para grupo: {}", groupId);
 
         try {
-            // Verificación explícita de autenticación
-            Authentication auth = checkAuthentication(headerAccessor);
-            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+            // ✅ EXTRAER usuario directamente del mensaje WebSocket
+            UserDomain authenticatedUser = extractUserFromMessage(headerAccessor);
+            log.info("👤 Mensaje del usuario: ID={}, username={}",
+                    authenticatedUser.getId(), authenticatedUser.getUsername());
 
-            // Obtener usuario completo del dominio usando el servicio compartido
-            UserDomain currentUser = sharedService.getAuthenticatedUser();
-            log.debug("Usuario de dominio recuperado: ID={}, username={}",
-                    currentUser.getId(), currentUser.getUsername());
-
-            // Enriquecer mensaje con datos del usuario
-            enrichMessageWithUserData(message, currentUser);
+            // Enriquecer mensaje con datos del usuario CORRECTO
+            enrichMessageWithUserData(message, authenticatedUser);
             message.setGroupId(groupId);
 
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "group");
-            log.debug("Mensaje persistido con ID: {}", savedMessage.getId());
+            // Persistir el mensaje usando el usuario extraído
+            MessageDomain savedMessage = persistMessage(message, "group", authenticatedUser);
+            log.debug("💾 Mensaje persistido con ID: {} para usuario: {}",
+                    savedMessage.getId(), authenticatedUser.getUsername());
 
-            // Preparar mensaje para envío (añadir ID y timestamp)
+            // Preparar mensaje para envío
             message.setId(savedMessage.getId());
             message.setTimestamp(savedMessage.getCreationDate());
 
             // Enviar mensaje al tópico del grupo
             messagingTemplate.convertAndSend("/topic/message/group/" + groupId, message);
-            log.debug("Mensaje enviado correctamente al grupo {}", groupId);
+            log.debug("📤 Mensaje enviado correctamente al grupo {} por usuario {}",
+                    groupId, authenticatedUser.getUsername());
 
         } catch (Exception e) {
             handleMessageError(e, headerAccessor, "Error al procesar mensaje para grupo " + groupId);
@@ -117,7 +203,7 @@ public class MessageWebSocketController {
     }
 
     /**
-     * Maneja mensajes enviados a hilos específicos.
+     * ✅ MISMA LÓGICA para threads
      */
     @MessageMapping("/message/thread/{threadId}")
     public void handleThreadMessage(
@@ -125,30 +211,23 @@ public class MessageWebSocketController {
             @Payload MessageWebSocketDTO message,
             SimpMessageHeaderAccessor headerAccessor) {
 
-        log.info("Recibido mensaje para hilo: {}", threadId);
+        log.info("📥 Recibido mensaje para hilo: {}", threadId);
 
         try {
-            // Verificación explícita de autenticación
-            Authentication auth = checkAuthentication(headerAccessor);
-            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+            UserDomain authenticatedUser = extractUserFromMessage(headerAccessor);
+            log.info("👤 Mensaje del usuario: ID={}, username={}",
+                    authenticatedUser.getId(), authenticatedUser.getUsername());
 
-            // Obtener usuario completo del dominio
-            UserDomain currentUser = sharedService.getAuthenticatedUser();
-
-            // Enriquecer mensaje con datos del usuario
-            enrichMessageWithUserData(message, currentUser);
+            enrichMessageWithUserData(message, authenticatedUser);
             message.setThreadId(threadId);
 
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "thread");
-
-            // Preparar mensaje para envío
+            MessageDomain savedMessage = persistMessage(message, "thread", authenticatedUser);
             message.setId(savedMessage.getId());
             message.setTimestamp(savedMessage.getCreationDate());
 
-            // Enviar mensaje al tópico del hilo
             messagingTemplate.convertAndSend("/topic/message/thread/" + threadId, message);
-            log.debug("Mensaje enviado correctamente al hilo {}", threadId);
+            log.debug("📤 Mensaje enviado correctamente al hilo {} por usuario {}",
+                    threadId, authenticatedUser.getUsername());
 
         } catch (Exception e) {
             handleMessageError(e, headerAccessor, "Error al procesar mensaje para hilo " + threadId);
@@ -156,7 +235,7 @@ public class MessageWebSocketController {
     }
 
     /**
-     * Maneja mensajes enviados a publicaciones específicas.
+     * ✅ MISMA LÓGICA para posts
      */
     @MessageMapping("/message/post/{postId}")
     public void handlePostMessage(
@@ -164,30 +243,23 @@ public class MessageWebSocketController {
             @Payload MessageWebSocketDTO message,
             SimpMessageHeaderAccessor headerAccessor) {
 
-        log.info("Recibido mensaje para publicación: {}", postId);
+        log.info("📥 Recibido mensaje para publicación: {}", postId);
 
         try {
-            // Verificación explícita de autenticación
-            Authentication auth = checkAuthentication(headerAccessor);
-            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+            UserDomain authenticatedUser = extractUserFromMessage(headerAccessor);
+            log.info("👤 Mensaje del usuario: ID={}, username={}",
+                    authenticatedUser.getId(), authenticatedUser.getUsername());
 
-            // Obtener usuario completo del dominio
-            UserDomain currentUser = sharedService.getAuthenticatedUser();
-
-            // Enriquecer mensaje con datos del usuario
-            enrichMessageWithUserData(message, currentUser);
+            enrichMessageWithUserData(message, authenticatedUser);
             message.setPostId(postId);
 
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "post");
-
-            // Preparar mensaje para envío
+            MessageDomain savedMessage = persistMessage(message, "post", authenticatedUser);
             message.setId(savedMessage.getId());
             message.setTimestamp(savedMessage.getCreationDate());
 
-            // Enviar mensaje al tópico de la publicación
             messagingTemplate.convertAndSend("/topic/message/post/" + postId, message);
-            log.debug("Mensaje enviado correctamente a la publicación {}", postId);
+            log.debug("📤 Mensaje enviado correctamente a la publicación {} por usuario {}",
+                    postId, authenticatedUser.getUsername());
 
         } catch (Exception e) {
             handleMessageError(e, headerAccessor, "Error al procesar mensaje para publicación " + postId);
@@ -195,36 +267,29 @@ public class MessageWebSocketController {
     }
 
     /**
-     * Maneja mensajes enviados al foro general.
+     * ✅ MISMA LÓGICA para forum
      */
     @MessageMapping("/message/forum")
     public void handleForumMessage(
             @Payload MessageWebSocketDTO message,
             SimpMessageHeaderAccessor headerAccessor) {
 
-        log.info("Recibido mensaje para foro general");
+        log.info("📥 Recibido mensaje para foro general");
 
         try {
-            // Verificación explícita de autenticación
-            Authentication auth = checkAuthentication(headerAccessor);
-            log.debug("Usuario autenticado correctamente: {}", auth.getName());
+            UserDomain authenticatedUser = extractUserFromMessage(headerAccessor);
+            log.info("👤 Mensaje del usuario: ID={}, username={}",
+                    authenticatedUser.getId(), authenticatedUser.getUsername());
 
-            // Obtener usuario completo del dominio
-            UserDomain currentUser = sharedService.getAuthenticatedUser();
+            enrichMessageWithUserData(message, authenticatedUser);
 
-            // Enriquecer mensaje con datos del usuario
-            enrichMessageWithUserData(message, currentUser);
-
-            // Persistir el mensaje
-            MessageDomain savedMessage = persistMessage(message, "forum");
-
-            // Preparar mensaje para envío
+            MessageDomain savedMessage = persistMessage(message, "forum", authenticatedUser);
             message.setId(savedMessage.getId());
             message.setTimestamp(savedMessage.getCreationDate());
 
-            // Enviar mensaje al tópico del foro
             messagingTemplate.convertAndSend("/topic/message/forum", message);
-            log.debug("Mensaje enviado correctamente al foro general");
+            log.debug("📤 Mensaje enviado correctamente al foro general por usuario {}",
+                    authenticatedUser.getUsername());
 
         } catch (Exception e) {
             handleMessageError(e, headerAccessor, "Error al procesar mensaje para foro general");
@@ -232,12 +297,11 @@ public class MessageWebSocketController {
     }
 
     /**
-     * Maneja errores durante el procesamiento de mensajes.
+     * ✅ MANTENER: Resto de métodos auxiliares sin cambios
      */
     private void handleMessageError(Exception e, SimpMessageHeaderAccessor headerAccessor, String context) {
         log.error("{}: {}", context, e.getMessage(), e);
 
-        // Notificar al usuario del error
         if (headerAccessor != null && headerAccessor.getSessionId() != null) {
             messagingTemplate.convertAndSendToUser(
                     headerAccessor.getSessionId(),
@@ -251,7 +315,6 @@ public class MessageWebSocketController {
             );
         }
 
-        // Propagar excepción para ser manejada por el controlador global
         if (e instanceof AccessDeniedException) {
             throw (AccessDeniedException) e;
         } else if (e instanceof AuthenticationCredentialsNotFoundException) {
@@ -261,9 +324,6 @@ public class MessageWebSocketController {
         }
     }
 
-    /**
-     * Manejador global de excepciones para mensajes WebSocket.
-     */
     @MessageExceptionHandler
     public void handleException(Exception exception, SimpMessageHeaderAccessor headerAccessor) {
         log.error("Error global en mensaje WebSocket: {}", exception.getMessage(), exception);
@@ -280,9 +340,6 @@ public class MessageWebSocketController {
         }
     }
 
-    /**
-     * Respuesta de error para el cliente.
-     */
     private static class ErrorResponse {
         private final String message;
         private final String type;
@@ -299,27 +356,10 @@ public class MessageWebSocketController {
         public long getTimestamp() { return timestamp; }
     }
 
-    /**
-     * Enriquece el mensaje con datos del usuario autenticado.
-     */
     private void enrichMessageWithUserData(MessageWebSocketDTO message, UserDomain currentUser) {
         message.setUserId(currentUser.getId());
         message.setUsername(currentUser.getUsername());
         message.setUserAvatar(currentUser.getAvatar());
         message.setTimestamp(LocalDateTime.now());
-    }
-
-    /**
-     * Persiste el mensaje en la base de datos.
-     */
-    private MessageDomain persistMessage(MessageWebSocketDTO message, String contextType) {
-        CreateMessageRequestDTO createRequest = CreateMessageRequestDTO.builder()
-                .postId(message.getPostId())
-                .content(message.getContent())
-                .threadId(message.getThreadId())
-                .groupId(message.getGroupId())
-                .build();
-
-        return messageDomainService.createMessage(createRequest);
     }
 }
