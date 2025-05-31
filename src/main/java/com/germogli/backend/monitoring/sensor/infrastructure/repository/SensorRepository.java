@@ -1,5 +1,6 @@
 package com.germogli.backend.monitoring.sensor.infrastructure.repository;
 
+import com.germogli.backend.monitoring.sensor.application.dto.SensorThresholdResponseDTO;
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 import com.germogli.backend.monitoring.sensor.domain.repository.SensorDomainRepository;
 import com.germogli.backend.monitoring.sensor.infrastructure.entity.SensorEntity;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -219,5 +221,64 @@ public class SensorRepository implements SensorDomainRepository {
                 .sensorType(sensorType)
                 .unitOfMeasurement(unitOfMeasurement)
                 .build();
+    }
+
+    /**
+     * Obtiene todos los sensores con sus umbrales asociados a un cultivo específico
+     * utilizando sp_get_thresholds_by_crop_id.
+     */
+    @Override
+    public List<SensorThresholdResponseDTO> getThresholdsByCropId(Integer cropId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_thresholds_by_crop_id");
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_crop_id", cropId);
+        query.execute();
+
+        List<Object[]> resultList = query.getResultList();
+        List<SensorThresholdResponseDTO> thresholds = new ArrayList<>();
+
+        for (Object[] row : resultList) {
+            SensorThresholdResponseDTO threshold = SensorThresholdResponseDTO.builder()
+                    .sensorId((Integer) row[0])           // sensor_id
+                    .sensorType((String) row[1])          // sensor_type
+                    .unitOfMeasurement((String) row[2])   // unit_of_measurement
+                    .minThreshold((BigDecimal) row[3])    // min_threshold
+                    .maxThreshold((BigDecimal) row[4])    // max_threshold
+                    .build();
+            thresholds.add(threshold);
+        }
+
+        return thresholds;
+    }
+
+    /**
+     * * Obtiene los umbrales de un sensor específico en un cultivo específico
+     * utilizando sp_get_thresholds_by_crop_and_sensor.
+     */
+    @Override
+    public Optional<SensorThresholdResponseDTO> getThresholdsByCropIdAndSensorId(Integer cropId, Integer sensorId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_thresholds_by_crop_and_sensor");
+        query.registerStoredProcedureParameter("p_crop_id", Integer.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter("p_sensor_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_crop_id", cropId);
+        query.setParameter("p_sensor_id", sensorId);
+        query.execute();
+
+        List<Object[]> resultList = query.getResultList();
+
+        if (resultList.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Object[] row = resultList.get(0);
+        SensorThresholdResponseDTO threshold = SensorThresholdResponseDTO.builder()
+                .sensorId((Integer) row[0])           // sensor_id
+                .sensorType((String) row[1])          // sensor_type
+                .unitOfMeasurement((String) row[2])   // unit_of_measurement
+                .minThreshold((BigDecimal) row[3])    // min_threshold
+                .maxThreshold((BigDecimal) row[4])    // max_threshold
+                .build();
+
+        return Optional.of(threshold);
     }
 }

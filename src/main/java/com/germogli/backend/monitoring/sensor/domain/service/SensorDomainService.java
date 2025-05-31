@@ -8,6 +8,7 @@ import com.germogli.backend.monitoring.crop.domain.model.CropDomain;
 import com.germogli.backend.monitoring.crop.domain.repository.CropDomainRepository;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorRequestDTO;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorResponseDTO;
+import com.germogli.backend.monitoring.sensor.application.dto.SensorThresholdResponseDTO;
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 import com.germogli.backend.monitoring.sensor.domain.repository.SensorDomainRepository;
 import lombok.RequiredArgsConstructor;
@@ -452,5 +453,90 @@ public class SensorDomainService {
         );
 
         return sensor;
+    }
+
+    /**
+     * Obtiene todos los sensores con sus umbrales configurados para un cultivo específico.
+     * Verifica que el usuario tenga acceso al cultivo.
+     *
+     * @param cropId ID del cultivo.
+     * @return Lista de sensores con sus umbrales para el cultivo.
+     * @throws ResourceNotFoundException si el cultivo no existe.
+     * @throws AccessDeniedException si el usuario no tiene acceso al cultivo.
+     */
+    public List<SensorThresholdResponseDTO> getThresholdsByCropId(Integer cropId) {
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+        // Verificar que el cultivo exista
+        CropDomain crop = cropRepository.findById(cropId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
+
+        // Verificar que el usuario actual sea el propietario o un administrador
+        boolean isOwner = crop.getUserId().equals(currentUser.getId());
+        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para acceder a los umbrales de este cultivo");
+        }
+
+        return sensorRepository.getThresholdsByCropId(cropId);
+    }
+
+    /**
+     * Obtiene los umbrales de un sensor específico en un cultivo específico.
+     * Verifica que el usuario tenga acceso al cultivo.
+     *
+     * @param cropId ID del cultivo.
+     * @param sensorId ID del sensor.
+     * @return Sensor con sus umbrales o empty si no está asociado.
+     * @throws ResourceNotFoundException si el cultivo no existe.
+     * @throws AccessDeniedException si el usuario no tiene acceso al cultivo.
+     */
+    public Optional<SensorThresholdResponseDTO> getThresholdsByCropIdAndSensorId(Integer cropId, Integer sensorId) {
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+        // Verificar que el cultivo exista
+        CropDomain crop = cropRepository.findById(cropId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
+
+        // Verificar que el usuario actual sea el propietario o un administrador
+        boolean isOwner = crop.getUserId().equals(currentUser.getId());
+        boolean isAdmin = sharedService.hasRole(currentUser, "ADMINISTRADOR");
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para acceder a los umbrales de este cultivo");
+        }
+
+        // Verificar que el sensor exista
+        sensorRepository.findById(sensorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sensor no encontrado con id: " + sensorId));
+
+        return sensorRepository.getThresholdsByCropIdAndSensorId(cropId, sensorId);
+    }
+
+    /**
+     * Obtiene todos los umbrales de sensores para los cultivos del usuario autenticado.
+     *
+     * @return Mapa con los umbrales agrupados por cultivo.
+     */
+    public Map<Integer, List<SensorThresholdResponseDTO>> getUserCropThresholds() {
+        UserDomain currentUser = sharedService.getAuthenticatedUser();
+
+        // Obtener todos los cultivos del usuario
+        List<CropDomain> userCrops = cropRepository.findByUserId(currentUser.getId());
+
+        // Si no tiene cultivos, devolver mapa vacío
+        if (userCrops.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        // Obtener umbrales para cada cultivo
+        Map<Integer, List<SensorThresholdResponseDTO>> cropThresholds = new HashMap<>();
+        for (CropDomain crop : userCrops) {
+            List<SensorThresholdResponseDTO> thresholds = sensorRepository.getThresholdsByCropId(crop.getId());
+            cropThresholds.put(crop.getId(), thresholds);
+        }
+
+        return cropThresholds;
     }
 }

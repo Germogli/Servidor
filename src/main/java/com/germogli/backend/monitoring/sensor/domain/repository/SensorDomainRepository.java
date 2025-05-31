@@ -1,5 +1,6 @@
 package com.germogli.backend.monitoring.sensor.domain.repository;
 
+import com.germogli.backend.monitoring.sensor.application.dto.SensorThresholdResponseDTO;
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 
 import java.math.BigDecimal;
@@ -98,4 +99,20 @@ public interface SensorDomainRepository {
                                           Integer cropId, BigDecimal minThreshold,
                                           BigDecimal maxThreshold);
 
+    /**
+     * Obtiene todos los sensores con sus umbrales asociados a un cultivo específico.
+     *
+     * @param cropId Identificador del cultivo.
+     * @return Lista de sensores con sus umbrales configurados para el cultivo.
+     */
+    List<SensorThresholdResponseDTO> getThresholdsByCropId(Integer cropId);
+
+    /**
+     * Obtiene los umbrales de un sensor específico en un cultivo específico.
+     *
+     * @param cropId Identificador del cultivo.
+     * @param sensorId Identificador del sensor.
+     * @return Información del sensor con sus umbrales o empty si no está asociado.
+     */
+    Optional<SensorThresholdResponseDTO> getThresholdsByCropIdAndSensorId(Integer cropId, Integer sensorId);
 }

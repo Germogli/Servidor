@@ -3,6 +3,7 @@ package com.germogli.backend.monitoring.sensor.web.controller;
 import com.germogli.backend.monitoring.application.dto.common.ApiResponseDTO;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorRequestDTO;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorResponseDTO;
+import com.germogli.backend.monitoring.sensor.application.dto.SensorThresholdResponseDTO;
 import com.germogli.backend.monitoring.sensor.application.dto.SensorWithThresholdsRequestDTO;
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 import com.germogli.backend.monitoring.sensor.domain.service.SensorDomainService;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Controlador REST para la gestión de sensores.
@@ -236,6 +239,65 @@ public class SensorController {
         return ResponseEntity.ok(ApiResponseDTO.<SensorResponseDTO>builder()
                 .message("Sensor creado y asociado al cultivo correctamente")
                 .data(sensorDomainService.toResponse(sensor))
+                .build());
+    }
+
+    /**
+     * Endpoint para obtener todos los sensores con sus umbrales configurados para un cultivo específico.
+     *
+     * @param cropId Identificador del cultivo.
+     * @return Respuesta API con la lista de sensores y umbrales del cultivo.
+     */
+    @GetMapping("/crop/{cropId}/thresholds")
+    public ResponseEntity<ApiResponseDTO<List<SensorThresholdResponseDTO>>> getThresholdsByCropId(
+            @PathVariable Integer cropId) {
+
+        List<SensorThresholdResponseDTO> thresholds = sensorDomainService.getThresholdsByCropId(cropId);
+
+        return ResponseEntity.ok(ApiResponseDTO.<List<SensorThresholdResponseDTO>>builder()
+                .message("Umbrales del cultivo recuperados correctamente")
+                .data(thresholds)
+                .build());
+    }
+
+    /**
+     * Endpoint para obtener los umbrales de un sensor específico en un cultivo específico.
+     *
+     * @param cropId Identificador del cultivo.
+     * @param sensorId Identificador del sensor.
+     * @return Respuesta API con la información del sensor y sus umbrales.
+     */
+    @GetMapping("/crop/{cropId}/sensor/{sensorId}/thresholds")
+    public ResponseEntity<ApiResponseDTO<SensorThresholdResponseDTO>> getThresholdsByCropIdAndSensorId(
+            @PathVariable Integer cropId,
+            @PathVariable Integer sensorId) {
+
+        Optional<SensorThresholdResponseDTO> threshold = sensorDomainService
+                .getThresholdsByCropIdAndSensorId(cropId, sensorId);
+
+        if (threshold.isPresent()) {
+            return ResponseEntity.ok(ApiResponseDTO.<SensorThresholdResponseDTO>builder()
+                    .message("Umbrales del sensor recuperados correctamente")
+                    .data(threshold.get())
+                    .build());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Endpoint para obtener todos los umbrales de sensores para los cultivos del usuario autenticado.
+     *
+     * @return Respuesta API con los umbrales agrupados por cultivo.
+     */
+    @GetMapping("/user/thresholds")
+    public ResponseEntity<ApiResponseDTO<Map<Integer, List<SensorThresholdResponseDTO>>>> getUserCropThresholds() {
+
+        Map<Integer, List<SensorThresholdResponseDTO>> cropThresholds = sensorDomainService.getUserCropThresholds();
+
+        return ResponseEntity.ok(ApiResponseDTO.<Map<Integer, List<SensorThresholdResponseDTO>>>builder()
+                .message("Umbrales de cultivos del usuario recuperados correctamente")
+                .data(cropThresholds)
                 .build());
     }
 }
