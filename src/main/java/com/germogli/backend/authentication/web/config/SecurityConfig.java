@@ -89,8 +89,9 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll() // ✅ IMPORTANTE: Permitir handshake WebSocket
                         .requestMatchers("/readings/device/**").permitAll()
+                        .requestMatchers("/readings/batch").permitAll()
 
-                         //Permite acceso a recursos estáticos
+                        //Permite acceso a recursos estáticos
                         .requestMatchers("/testing/**").permitAll()
                         .requestMatchers("/static/**").permitAll()
                         .requestMatchers("/*.html").permitAll()

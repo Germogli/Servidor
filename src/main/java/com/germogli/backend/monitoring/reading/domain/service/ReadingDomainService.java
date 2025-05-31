@@ -16,8 +16,10 @@ import com.germogli.backend.monitoring.reading.domain.model.ReadingDomain;
 import com.germogli.backend.monitoring.reading.domain.repository.ReadingDomainRepository;
 import com.germogli.backend.monitoring.sensor.domain.model.SensorDomain;
 import com.germogli.backend.monitoring.sensor.domain.repository.SensorDomainRepository;
+import com.germogli.backend.monitoring.sensor.application.dto.SensorThresholdResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,14 +30,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
  * Servicio de dominio para la gestión de lecturas de sensores.
- * Contiene la lógica de negocio para operaciones con lecturas.
+ * ACTUALIZADO: Usa exclusivamente umbrales personalizados de la base de datos.
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReadingDomainService {
 
     private final ReadingDomainRepository readingRepository;
@@ -44,69 +48,6 @@ public class ReadingDomainService {
     private final AlertDomainRepository alertRepository;
     private final MonitoringSharedService sharedService;
     private final NotificationService notificationService;
-
-    // Mapas para almacenar umbrales por tipo de sensor
-    private static final Map<String, ThresholdConfig> THRESHOLDS = new HashMap<>();
-
-    static {
-        // Umbrales para temperatura (DHT22)
-        THRESHOLDS.put("temperature", new ThresholdConfig(
-                new BigDecimal("10"), new BigDecimal("30"),   // Mín y máx normal
-                new BigDecimal("5"), new BigDecimal("35"),    // Límites de advertencia
-                new BigDecimal("0"), new BigDecimal("40")     // Límites críticos
-        ));
-
-        // Umbrales para humedad (DHT22)
-        THRESHOLDS.put("humidity", new ThresholdConfig(
-                new BigDecimal("40"), new BigDecimal("70"),   // Mín y máx normal
-                new BigDecimal("30"), new BigDecimal("80"),   // Límites de advertencia
-                new BigDecimal("20"), new BigDecimal("90")    // Límites críticos
-        ));
-
-        // Umbrales para TDS (ppm)
-        THRESHOLDS.put("tds", new ThresholdConfig(
-                new BigDecimal("400"), new BigDecimal("1200"),  // Mín y máx normal
-                new BigDecimal("300"), new BigDecimal("1500"),  // Límites de advertencia
-                new BigDecimal("200"), new BigDecimal("2000")   // Límites críticos
-        ));
-
-        // Umbrales para nivel de agua
-        THRESHOLDS.put("waterLevel", new ThresholdConfig(
-                new BigDecimal("70"), new BigDecimal("100"),   // Mín y máx normal
-                new BigDecimal("30"), new BigDecimal("100"),   // Límites de advertencia
-                new BigDecimal("10"), new BigDecimal("100")    // Límites críticos
-        ));
-
-        // Umbrales para pH
-        THRESHOLDS.put("ph", new ThresholdConfig(
-                new BigDecimal("5.5"), new BigDecimal("6.5"),   // Mín y máx normal
-                new BigDecimal("5.0"), new BigDecimal("7.0"),   // Límites de advertencia
-                new BigDecimal("4.5"), new BigDecimal("7.5")    // Límites críticos
-        ));
-    }
-
-    /**
-     * Clase estática para configurar umbrales de sensores.
-     */
-    private static class ThresholdConfig {
-        final BigDecimal minNormal;
-        final BigDecimal maxNormal;
-        final BigDecimal minWarning;
-        final BigDecimal maxWarning;
-        final BigDecimal minCritical;
-        final BigDecimal maxCritical;
-
-        ThresholdConfig(BigDecimal minNormal, BigDecimal maxNormal,
-                        BigDecimal minWarning, BigDecimal maxWarning,
-                        BigDecimal minCritical, BigDecimal maxCritical) {
-            this.minNormal = minNormal;
-            this.maxNormal = maxNormal;
-            this.minWarning = minWarning;
-            this.maxWarning = maxWarning;
-            this.minCritical = minCritical;
-            this.maxCritical = maxCritical;
-        }
-    }
 
     /**
      * Crea una nueva lectura de sensor.
@@ -147,8 +88,8 @@ public class ReadingDomainService {
 
         ReadingDomain savedReading = readingRepository.save(reading);
 
-        // Verificar umbrales y generar alertas si es necesario
-        checkThresholdsAndCreateAlert(savedReading, sensor);
+        // Verificar umbrales personalizados y generar alertas si es necesario
+        checkPersonalizedThresholdsAndCreateAlert(savedReading, sensor);
 
         return savedReading;
     }
@@ -191,8 +132,8 @@ public class ReadingDomainService {
 
             readings.add(reading);
 
-            // Verificar umbrales y generar alertas si es necesario
-            checkThresholdsAndCreateAlert(reading, sensor);
+            // Verificar umbrales personalizados y generar alertas si es necesario
+            checkPersonalizedThresholdsAndCreateAlert(reading, sensor);
         }
 
         // Guardar todas las lecturas en lote
@@ -200,55 +141,144 @@ public class ReadingDomainService {
     }
 
     /**
-     * Verifica si una lectura excede los umbrales configurados y genera alertas si es necesario.
+     * ✅ NUEVO: Verifica umbrales personalizados y genera alertas.
+     * SOLO usa umbrales configurados en la tabla crop_sensors.
      *
      * @param reading La lectura a verificar.
      * @param sensor El sensor asociado a la lectura.
      */
-    private void checkThresholdsAndCreateAlert(ReadingDomain reading, SensorDomain sensor) {
-        // Obtener la configuración de umbrales para el tipo de sensor
-        ThresholdConfig thresholds = THRESHOLDS.get(sensor.getSensorType().toLowerCase());
+    private void checkPersonalizedThresholdsAndCreateAlert(ReadingDomain reading, SensorDomain sensor) {
+        try {
+            // Buscar umbrales personalizados para este cultivo y sensor
+            Optional<SensorThresholdResponseDTO> thresholdsOpt =
+                    sensorRepository.getThresholdsByCropIdAndSensorId(reading.getCropId(), reading.getSensorId());
 
-        if (thresholds == null) {
-            // No hay umbrales definidos para este tipo de sensor
-            return;
+            if (thresholdsOpt.isEmpty()) {
+                log.debug("No hay umbrales configurados para sensor {} en cultivo {}. No se generará alerta.",
+                        reading.getSensorId(), reading.getCropId());
+                return;
+            }
+
+            SensorThresholdResponseDTO thresholds = thresholdsOpt.get();
+            BigDecimal value = reading.getReadingValue();
+
+            // Verificar si el valor está fuera de los umbrales configurados
+            boolean isOutOfRange = false;
+            String alertLevel = null;
+            String alertMessage = null;
+
+            if (thresholds.getMinThreshold() != null && value.compareTo(thresholds.getMinThreshold()) < 0) {
+                isOutOfRange = true;
+                alertLevel = "high";
+                alertMessage = String.format("Valor por debajo del umbral mínimo de %s: %.2f %s (mínimo: %.2f)",
+                        sensor.getSensorType(), value, sensor.getUnitOfMeasurement(), thresholds.getMinThreshold());
+            } else if (thresholds.getMaxThreshold() != null && value.compareTo(thresholds.getMaxThreshold()) > 0) {
+                isOutOfRange = true;
+                alertLevel = "high";
+                alertMessage = String.format("Valor por encima del umbral máximo de %s: %.2f %s (máximo: %.2f)",
+                        sensor.getSensorType(), value, sensor.getUnitOfMeasurement(), thresholds.getMaxThreshold());
+            }
+
+            // Si se detecta un valor fuera de rango, generar alerta
+            if (isOutOfRange) {
+                log.info("Generando alerta para lectura fuera de umbrales: {}", alertMessage);
+
+                // Crear alerta usando el procedimiento almacenado
+                AlertDomain alert = alertRepository.processAlert(
+                        reading.getCropId(),
+                        reading.getSensorId(),
+                        alertLevel,
+                        alertMessage
+                );
+
+                // Enviar notificación al propietario del cultivo
+                CropDomain crop = cropRepository.findById(reading.getCropId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + reading.getCropId()));
+
+                notificationService.sendNotification(
+                        crop.getUserId(),
+                        alertMessage,
+                        "sensor_alert"
+                );
+
+                log.info("Alerta generada exitosamente con ID: {} para cultivo: {}",
+                        alert.getId(), reading.getCropId());
+            } else {
+                log.debug("Lectura dentro de umbrales normales: {} = {} {}",
+                        sensor.getSensorType(), value, sensor.getUnitOfMeasurement());
+            }
+
+        } catch (Exception e) {
+            log.error("Error al verificar umbrales personalizados para lectura: cropId={}, sensorId={}, error={}",
+                    reading.getCropId(), reading.getSensorId(), e.getMessage(), e);
+            // No lanzar excepción para no interrumpir el flujo de creación de lecturas
+        }
+    }
+
+    /**
+     * Procesa lecturas provenientes directamente de un dispositivo ESP32.
+     * Identifica los sensores correspondientes por tipo y registra las lecturas.
+     *
+     * @param deviceId ID del dispositivo (para registro)
+     * @param cropId ID del cultivo al que pertenecen las lecturas
+     * @param requestDTO DTO con los datos de temperatura, humedad y TDS
+     * @return Lista de lecturas procesadas
+     */
+    @Transactional
+    public List<ReadingDomain> processDeviceReadings(Integer deviceId, Integer cropId, DeviceReadingRequestDTO requestDTO) {
+        // Verificar que el cultivo exista
+        CropDomain crop = cropRepository.findById(cropId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
+
+        List<ReadingDomain> readings = new ArrayList<>();
+        LocalDateTime timestamp = LocalDateTime.now();
+
+        // Mapear los sensores por tipo (asumiendo que ya existen en la BD)
+        Map<String, SensorDomain> sensorsByType = getSensorsByTypeForCrop(cropId);
+
+        // Procesar temperatura si hay datos y existe el sensor
+        if (requestDTO.getTemperature() != null && sensorsByType.containsKey("temperature")) {
+            SensorDomain tempSensor = sensorsByType.get("temperature");
+            ReadingDomain reading = ReadingDomain.builder()
+                    .cropId(cropId)
+                    .sensorId(tempSensor.getId())
+                    .readingValue(requestDTO.getTemperature())
+                    .readingDate(timestamp)
+                    .build();
+
+            readings.add(readingRepository.save(reading));
+            checkPersonalizedThresholdsAndCreateAlert(reading, tempSensor);
         }
 
-        BigDecimal value = reading.getReadingValue();
-        String alertLevel = null;
-        String alertMessage = null;
+        // Procesar humedad si hay datos y existe el sensor
+        if (requestDTO.getHumedad() != null && sensorsByType.containsKey("humidity")) {
+            SensorDomain humiditySensor = sensorsByType.get("humidity");
+            ReadingDomain reading = ReadingDomain.builder()
+                    .cropId(cropId)
+                    .sensorId(humiditySensor.getId())
+                    .readingValue(requestDTO.getHumedad())
+                    .readingDate(timestamp)
+                    .build();
 
-        // Verificar umbrales críticos
-        if (value.compareTo(thresholds.minCritical) < 0 || value.compareTo(thresholds.maxCritical) > 0) {
-            alertLevel = "critical";
-            alertMessage = "Valor crítico de " + sensor.getSensorType() + ": " + value + " " + sensor.getUnitOfMeasurement();
-        }
-        // Verificar umbrales de advertencia
-        else if (value.compareTo(thresholds.minWarning) < 0 || value.compareTo(thresholds.maxWarning) > 0) {
-            alertLevel = "high";
-            alertMessage = "Valor fuera de rango recomendado de " + sensor.getSensorType() + ": " + value + " " + sensor.getUnitOfMeasurement();
-        }
-        // Verificar umbrales normales
-        else if (value.compareTo(thresholds.minNormal) < 0 || value.compareTo(thresholds.maxNormal) > 0) {
-            alertLevel = "medium";
-            alertMessage = "Valor fuera de rango óptimo de " + sensor.getSensorType() + ": " + value + " " + sensor.getUnitOfMeasurement();
+            readings.add(readingRepository.save(reading));
+            checkPersonalizedThresholdsAndCreateAlert(reading, humiditySensor);
         }
 
-        // Si se requiere una alerta, generarla
-        if (alertLevel != null) {
-            AlertDomain alert = alertRepository.processAlert(
-                    reading.getCropId(), reading.getSensorId(), alertLevel, alertMessage);
+        // Procesar TDS si hay datos y existe el sensor
+        if (requestDTO.getTds() != null && sensorsByType.containsKey("tds")) {
+            SensorDomain tdsSensor = sensorsByType.get("tds");
+            ReadingDomain reading = ReadingDomain.builder()
+                    .cropId(cropId)
+                    .sensorId(tdsSensor.getId())
+                    .readingValue(requestDTO.getTds())
+                    .readingDate(timestamp)
+                    .build();
 
-            // También enviar notificación al propietario del cultivo
-            CropDomain crop = cropRepository.findById(reading.getCropId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + reading.getCropId()));
-
-            notificationService.sendNotification(
-                    crop.getUserId(),
-                    alertMessage,
-                    "sensor_alert"
-            );
+            readings.add(readingRepository.save(reading));
+            checkPersonalizedThresholdsAndCreateAlert(reading, tdsSensor);
         }
+
+        return readings;
     }
 
     /**
@@ -345,71 +375,6 @@ public class ReadingDomainService {
 
         return readingRepository.findByCropIdAndSensorIdAndDateRange(
                 cropId, sensorId, effectiveStartDate, effectiveEndDate, effectiveLimit);
-    }
-    /**
-     * Procesa lecturas provenientes directamente de un dispositivo ESP32.
-     * Identifica los sensores correspondientes por tipo y registra las lecturas.
-     *
-     * @param deviceId ID del dispositivo (para registro)
-     * @param cropId ID del cultivo al que pertenecen las lecturas
-     * @param requestDTO DTO con los datos de temperatura, humedad y TDS
-     * @return Lista de lecturas procesadas
-     */
-    @Transactional
-    public List<ReadingDomain> processDeviceReadings(Integer deviceId, Integer cropId, DeviceReadingRequestDTO requestDTO) {
-        // Verificar que el cultivo exista
-        CropDomain crop = cropRepository.findById(cropId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cultivo no encontrado con id: " + cropId));
-
-        List<ReadingDomain> readings = new ArrayList<>();
-        LocalDateTime timestamp = LocalDateTime.now();
-
-        // Mapear los sensores por tipo (asumiendo que ya existen en la BD)
-        Map<String, SensorDomain> sensorsByType = getSensorsByTypeForCrop(cropId);
-
-        // Procesar temperatura si hay datos y existe el sensor
-        if (requestDTO.getTemperature() != null && sensorsByType.containsKey("temperature")) {
-            SensorDomain tempSensor = sensorsByType.get("temperature");
-            ReadingDomain reading = ReadingDomain.builder()
-                    .cropId(cropId)
-                    .sensorId(tempSensor.getId())
-                    .readingValue(requestDTO.getTemperature())
-                    .readingDate(timestamp)
-                    .build();
-
-            readings.add(readingRepository.save(reading));
-            checkThresholdsAndCreateAlert(reading, tempSensor);
-        }
-
-        // Procesar humedad si hay datos y existe el sensor
-        if (requestDTO.getHumedad() != null && sensorsByType.containsKey("humidity")) {
-            SensorDomain humiditySensor = sensorsByType.get("humidity");
-            ReadingDomain reading = ReadingDomain.builder()
-                    .cropId(cropId)
-                    .sensorId(humiditySensor.getId())
-                    .readingValue(requestDTO.getHumedad())
-                    .readingDate(timestamp)
-                    .build();
-
-            readings.add(readingRepository.save(reading));
-            checkThresholdsAndCreateAlert(reading, humiditySensor);
-        }
-
-        // Procesar TDS si hay datos y existe el sensor
-        if (requestDTO.getTds() != null && sensorsByType.containsKey("tds")) {
-            SensorDomain tdsSensor = sensorsByType.get("tds");
-            ReadingDomain reading = ReadingDomain.builder()
-                    .cropId(cropId)
-                    .sensorId(tdsSensor.getId())
-                    .readingValue(requestDTO.getTds())
-                    .readingDate(timestamp)
-                    .build();
-
-            readings.add(readingRepository.save(reading));
-            checkThresholdsAndCreateAlert(reading, tdsSensor);
-        }
-
-        return readings;
     }
 
     /**
