@@ -14,7 +14,6 @@ import java.util.List;
  */
 @Data
 public class ReadingBatchRequestDTO {
-    @NotNull(message = "El ID del dispositivo es obligatorio")
     private Integer deviceId;
 
     @NotNull(message = "El ID del cultivo es obligatorio")
