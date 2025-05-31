@@ -1,14 +1,14 @@
 package com.germogli.backend.user.user.web.controller;
 
-import com.germogli.backend.user.user.application.dto.ApiResponseDTO;
-import com.germogli.backend.user.user.application.dto.DeleteUserDTO;
-import com.germogli.backend.user.user.application.dto.GetUserByUsernameDTO;
-import com.germogli.backend.user.user.application.dto.UpdateUserInfoDTO;
+import com.germogli.backend.user.user.application.dto.*;
 import com.germogli.backend.user.user.domain.model.User;
 import com.germogli.backend.user.user.domain.service.UserDomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -60,6 +60,24 @@ public class UserController {
         return ResponseEntity.ok(ApiResponseDTO.<UpdateUserInfoDTO>builder()
                 .message("Usuario recuperado correctamente")
                 .data(userDomainService.toResponseDTO(user))
+                .build());
+    }
+
+    /**
+     * Obtiene todos los usuarios del sistema.
+     * ENDPOINT RESTRINGIDO: Solo usuarios con rol ADMINISTRADOR pueden acceder.
+     *
+     * @return ResponseEntity con la lista de todos los usuarios en un ApiResponseDTO.
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> getAllUsers() {
+        List<User> users = userDomainService.getAllUsers();
+        List<UserResponseDTO> userResponseDTOs = userDomainService.toUserResponseDTOList(users);
+
+        return ResponseEntity.ok(ApiResponseDTO.<List<UserResponseDTO>>builder()
+                .message("Usuarios recuperados correctamente")
+                .data(userResponseDTOs)
                 .build());
     }
 }

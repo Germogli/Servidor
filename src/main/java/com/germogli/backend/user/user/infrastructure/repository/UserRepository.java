@@ -15,6 +15,9 @@ import jakarta.persistence.ParameterMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Repository("userUserRepository")
 @RequiredArgsConstructor
 public class UserRepository implements UserDomainRepository {
@@ -110,5 +113,27 @@ public class UserRepository implements UserDomainRepository {
                         .build())
                 .creationDate(entity.getCreationDate())
                 .build();
+    }
+
+    /**
+     * Obtiene todos los usuarios del sistema utilizando sp_get_all_users.
+     * Convierte las entidades a objetos de dominio.
+     *
+     * @return Lista de todos los usuarios.
+     */
+    @Override
+    public List<User> getAllUsers() {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_all_users", UserEntity.class);
+            query.execute();
+
+            List<UserEntity> entities = query.getResultList();
+            return entities.stream()
+                    .map(this::convertToDomain)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw ExceptionHandlerUtil.handleException(this.getClass(), e, "Error al obtener todos los usuarios");
+        }
     }
 }
