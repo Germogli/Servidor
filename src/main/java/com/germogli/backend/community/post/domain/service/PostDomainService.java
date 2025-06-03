@@ -168,9 +168,8 @@ public class PostDomainService {
             throw new AccessDeniedException("No tiene permisos para actualizar esta publicación.");
         }
 
-        String multimediaUrl = request.getMultimediaContent() != null
-                ? request.getMultimediaContent()
-                : existingPost.getMultimediaContent();
+        // CAMBIO PRINCIPAL: Inicializar con el contenido multimedia existente
+        String multimediaUrl = existingPost.getMultimediaContent();
 
         // Si hay un archivo nuevo, procesarlo
         if (file != null && !file.isEmpty()) {
@@ -235,13 +234,17 @@ public class PostDomainService {
                 throw new RuntimeException("Error al subir el archivo a Azure Blob Storage", e);
             }
         }
-        // Si no hay archivo nuevo pero se quiere eliminar el actual
-        else if (request.getMultimediaContent() == null && existingPost.getMultimediaContent() != null) {
-            // Eliminar el archivo existente
+        // CAMBIO PRINCIPAL: Solo eliminar multimedia si se envía explícitamente una cadena vacía
+        else if (request.getMultimediaContent() != null &&
+                request.getMultimediaContent().trim().isEmpty() &&
+                existingPost.getMultimediaContent() != null) {
+            // El usuario explícitamente quiere eliminar el archivo multimedia
             String oldBlobName = extractBlobNameFromUrl(existingPost.getMultimediaContent());
             azureBlobStorageService.deleteBlob("publicaciones", oldBlobName);
             multimediaUrl = null;
         }
+        // CAMBIO PRINCIPAL: Si request.getMultimediaContent() es null, mantener el existente
+        // (esto significa que no se está actualizando el campo multimedia)
 
         return finalizePostUpdate(existingPost, request, multimediaUrl);
     }

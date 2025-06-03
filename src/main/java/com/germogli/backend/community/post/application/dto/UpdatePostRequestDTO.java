@@ -28,8 +28,10 @@ public class UpdatePostRequestDTO {
 
     /**
      * Contenido multimedia.
-     * Si es null, significa que se desea eliminar el archivo multimedia existente.
-     * Si tiene valor, se mantendrá el archivo multimedia actual o se sustituirá por uno nuevo.
+     * - Si es null: NO se actualiza el campo multimedia (se mantiene el valor existente)
+     * - Si es cadena vacía ("" o "   "): se ELIMINA el archivo multimedia existente
+     * - Si tiene valor: se MANTIENE el archivo multimedia actual (no se usa en la lógica actual)
+     * - Si se envía un archivo (MultipartFile): se REEMPLAZA el archivo multimedia
      */
     private String multimediaContent;
 }
