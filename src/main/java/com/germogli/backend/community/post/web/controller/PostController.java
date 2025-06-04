@@ -149,4 +149,20 @@ public class PostController {
                 .message("Publicación eliminada correctamente")
                 .build());
     }
+
+    /**
+     * Endpoint para listar publicaciones de un hilo específico.
+     *
+     * @param threadId ID del hilo
+     * @return Respuesta API con la lista de publicaciones del hilo
+     */
+    @GetMapping("/by-thread/{threadId}")
+    public ResponseEntity<ApiResponseDTO<List<PostResponseDTO>>> getPostsByThreadId(@PathVariable Integer threadId) {
+        List<PostResponseDTO> posts = postDomainService.toResponseList(
+                postDomainService.getPostsByThreadId(threadId));
+        return ResponseEntity.ok(ApiResponseDTO.<List<PostResponseDTO>>builder()
+                .message("Publicaciones del hilo recuperadas correctamente")
+                .data(posts)
+                .build());
+    }
 }

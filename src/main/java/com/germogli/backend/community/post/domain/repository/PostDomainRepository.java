@@ -15,4 +15,6 @@ public interface PostDomainRepository {
     Integer findOwnerIdByPostId(Integer postId);
     List<PostDomain> findByGroupId(Integer groupId);
     List<PostDomain> findByUserId(Integer userId);
+    List<PostDomain> findByThreadId(Integer threadId);
+
 }

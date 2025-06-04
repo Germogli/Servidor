@@ -157,4 +157,20 @@ public class PostRepository implements PostDomainRepository {
         List<PostEntity> resultList = query.getResultList();
         return resultList.stream().map(PostDomain::fromEntityStatic).collect(Collectors.toList());
     }
+    /**
+     * Obtiene las publicaciones de un hilo mediante sp_get_posts_by_thread_id.
+     * @param threadId ID del hilo
+     * @return Lista de publicaciones del hilo
+     */
+    @Override
+    @Transactional
+    public List<PostDomain> findByThreadId(Integer threadId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_posts_by_thread_id", PostEntity.class);
+        query.registerStoredProcedureParameter("p_thread_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_thread_id", threadId);
+        query.execute();
+        List<PostEntity> resultList = query.getResultList();
+        return resultList.stream().map(PostDomain::fromEntityStatic).collect(Collectors.toList());
+    }
+
 }

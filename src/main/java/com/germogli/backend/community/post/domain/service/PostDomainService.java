@@ -504,4 +504,21 @@ public class PostDomainService {
 
         return baseName + extension;
     }
+    /**
+     * Obtiene todas las publicaciones que pertenecen a un hilo específico.
+     *
+     * @param threadId ID del hilo
+     * @return Lista de publicaciones del hilo
+     * @throws ResourceNotFoundException si no existe el hilo
+     */
+    public List<PostDomain> getPostsByThreadId(Integer threadId) {
+        // Utiliza el servicio compartido para validar la existencia del hilo
+        sharedService.validateThreadExists(threadId);
+
+        List<PostDomain> posts = postRepository.findByThreadId(threadId);
+        if (posts.isEmpty()) {
+            return Collections.emptyList(); // Devuelve lista vacía en lugar de error
+        }
+        return posts;
+    }
 }

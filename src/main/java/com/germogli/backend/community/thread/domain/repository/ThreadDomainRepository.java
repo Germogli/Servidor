@@ -15,4 +15,5 @@ public interface ThreadDomainRepository {
     List<ThreadDomain> findThreadsByGroupId(Integer groupId);
     List<ThreadDomain> findThreadsByUserId(Integer userId);
     List<ThreadDomain> findForumThreads();
+    boolean existsById(Integer threadId);
 }

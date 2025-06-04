@@ -110,4 +110,23 @@ public class ThreadRepository implements ThreadDomainRepository {
         List<ThreadEntity> resultList = query.getResultList();
         return resultList.stream().map(ThreadDomain::fromEntityStatic).collect(Collectors.toList());
     }
+    /**
+     * Verifica si existe un hilo mediante sp_exists_thread.
+     * @param threadId ID del hilo
+     * @return true si el hilo existe, false en caso contrario
+     */
+    @Override
+    @Transactional
+    public boolean existsById(Integer threadId) {
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_exists_thread");
+        query.registerStoredProcedureParameter("p_thread_id", Integer.class, ParameterMode.IN);
+        query.setParameter("p_thread_id", threadId);
+        query.execute();
+        List<Object> resultList = query.getResultList();
+        if (!resultList.isEmpty()) {
+            Number count = (Number) resultList.get(0);
+            return count.intValue() > 0;
+        }
+        return false;
+    }
 }
