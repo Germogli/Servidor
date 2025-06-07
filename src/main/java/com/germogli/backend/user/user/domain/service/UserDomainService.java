@@ -47,9 +47,24 @@ public class UserDomainService {
         if (authenticatedUser == null) {
             throw new UserNotFoundException("Usuario no encontrado: " + authUsername);
         }
-        if (!authenticatedUser.getId().equals(dto.getUserId())) {
+
+        // Verificar si el usuario es administrador
+        boolean isAdmin = authenticatedUser.getRole() != null &&
+                authenticatedUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+
+        // Permitir la actualización si:
+        // 1. Es el mismo usuario actualizando su propia información, O
+        // 2. Es un administrador actualizando información de otro usuario
+        if (!authenticatedUser.getId().equals(dto.getUserId()) && !isAdmin) {
             throw new AccessDeniedException("No tienes permiso para actualizar la información de otro usuario");
         }
+
+        // Verificar que el usuario a actualizar existe
+        User userToUpdate = userRepository.getUserById(dto.getUserId());
+        if (userToUpdate == null) {
+            throw new UserNotFoundException("No se encontró un usuario con ID: " + dto.getUserId());
+        }
+
         User updatedUser = User.builder()
                 .id(dto.getUserId())
                 .username(dto.getUsername())
@@ -62,12 +77,35 @@ public class UserDomainService {
     }
 
     public void deleteUser(DeleteUserDTO dto) {
-        // Usamos getUserById para obtener el usuario correctamente mediante su ID
-        User user = userRepository.getUserById(dto.getUserId());
-        if (user == null) {
+        // Obtener el usuario autenticado
+        UserDetails authUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String authUsername = authUserDetails.getUsername();
+
+        User authenticatedUser = userRepository.getUserByUsername(authUsername);
+        if (authenticatedUser == null) {
+            throw new UserNotFoundException("Usuario autenticado no encontrado: " + authUsername);
+        }
+
+        // Verificar que el usuario tenga rol de administrador
+        boolean isAdmin = authenticatedUser.getRole() != null &&
+                authenticatedUser.getRole().getRoleType().equalsIgnoreCase("ADMINISTRADOR");
+
+        if (!isAdmin) {
+            throw new AccessDeniedException("No tiene permisos para eliminar usuarios. Se requiere rol de administrador.");
+        }
+
+        // Verificar que el usuario a eliminar existe
+        User userToDelete = userRepository.getUserById(dto.getUserId());
+        if (userToDelete == null) {
             throw new ResourceNotFoundException("Usuario no encontrado con ID: " + dto.getUserId());
         }
-        userRepository.deleteUser(user);
+
+        // Prevenir que un administrador se elimine a sí mismo
+        if (authenticatedUser.getId().equals(dto.getUserId())) {
+            throw new AccessDeniedException("No puedes eliminar tu propia cuenta.");
+        }
+
+        userRepository.deleteUser(userToDelete);
     }
 
     public User getUserByUsername(GetUserByUsernameDTO dto) {
