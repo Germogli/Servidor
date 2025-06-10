@@ -24,13 +24,13 @@ public class JwtService {
     private String SECRET_KEY = System.getenv("JWT_SECRET");
 
     // Nombre de la cookie para el token JWT
-    public static final String JWT_COOKIE_NAME = "germogli_jwt";
+    public static String JWT_COOKIE_NAME = System.getenv("COOKIE_NAME");
 
-    // Tiempo de expiración del token en milisegundos (24 minutos)
-    private static final long JWT_EXPIRATION_TIME = 1000 * 60 * 24;
+    // Tiempo de expiración del token en milisegundos (1 dia)
+    private static final long JWT_EXPIRATION_TIME = 1000L * 60 * 60 * 24;
 
-    // Tiempo de expiración de la cookie en segundos (24 minutos)
-    public static final int JWT_COOKIE_EXPIRY_SECONDS = 60 * 24;
+    // Tiempo de expiración de la cookie en segundos (1 dia)
+    public static final int JWT_COOKIE_EXPIRY_SECONDS = 60 * 60 * 24;
 
     /**
      * Genera un token JWT para el usuario proporcionado.
