@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import java.security.Key;
@@ -20,16 +21,16 @@ import java.util.function.Function;
 @Service
 public class JwtService {
     // Clave secreta para firmar el token (se debe mantener segura y con al menos 256 bits).
-    private static final String SECRET_KEY = "uX1v6U/7nO0t8aB3W9vZ6rT3yN0m+P7bQzS9vD8wX0cE";
+    private String SECRET_KEY = System.getenv("JWT_SECRET");
 
     // Nombre de la cookie para el token JWT
-    public static final String JWT_COOKIE_NAME = "germogli_jwt";
+    public static String JWT_COOKIE_NAME = System.getenv("COOKIE_NAME");
 
-    // Tiempo de expiración del token en milisegundos (24 minutos)
-    private static final long JWT_EXPIRATION_TIME = 1000 * 60 * 24;
+    // Tiempo de expiración del token en milisegundos (1 dia)
+    private static final long JWT_EXPIRATION_TIME = 1000L * 60 * 60 * 24;
 
-    // Tiempo de expiración de la cookie en segundos (24 minutos)
-    public static final int JWT_COOKIE_EXPIRY_SECONDS = 60 * 24;
+    // Tiempo de expiración de la cookie en segundos (1 dia)
+    public static final int JWT_COOKIE_EXPIRY_SECONDS = 60 * 60 * 24;
 
     /**
      * Genera un token JWT para el usuario proporcionado.
