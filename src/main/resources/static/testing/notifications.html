@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cliente de Prueba - Sistema de Notificaciones Germogli</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+        }
+
+        .container {
+          background: white;
+          border-radius: 15px;
+          padding: 30px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+          color: #2c3e50;
+          text-align: center;
+          margin-bottom: 30px;
+          font-size: 2.5em;
+          background: linear-gradient(45deg, #3498db, #9b59b6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .section {
+          background: #f8f9fa;
+          border-radius: 10px;
+          padding: 20px;
+          margin-bottom: 20px;
+          border-left: 4px solid #3498db;
+        }
+
+        .auth-section {
+          background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
+          border-left-color: #27ae60;
+        }
+
+        .connection-section {
+          background: linear-gradient(135deg, #fff5ee 0%, #f0f8ff 100%);
+          border-left-color: #e67e22;
+        }
+
+        .notification-section {
+          background: linear-gradient(135deg, #f0f8ff 0%, #f5f0ff 100%);
+          border-left-color: #9b59b6;
+        }
+
+        h2 {
+          margin-top: 0;
+          color: #34495e;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 1.3em;
+        }
+
+        .status {
+          padding: 12px 20px;
+          border-radius: 25px;
+          font-weight: bold;
+          display: inline-block;
+          min-width: 150px;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .status.connected {
+          background: linear-gradient(45deg, #27ae60, #2ecc71);
+          color: white;
+          box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .status.disconnected {
+          background: linear-gradient(45deg, #e74c3c, #c0392b);
+          color: white;
+          box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .status.connecting {
+          background: linear-gradient(45deg, #f39c12, #e67e22);
+          color: white;
+          box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .notification-display {
+          background: white;
+          border: 2px solid #ecf0f1;
+          border-radius: 10px;
+          height: 400px;
+          overflow-y: auto;
+          padding: 15px;
+          margin: 15px 0;
+        }
+
+        .notification {
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 15px;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .notification:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .notification.group {
+          border-left: 4px solid #3498db;
+          background: linear-gradient(135deg, #ebf3fd 0%, #f8fbff 100%);
+        }
+
+        .notification.thread {
+          border-left: 4px solid #e67e22;
+          background: linear-gradient(135deg, #fdf2e9 0%, #fef9f3 100%);
+        }
+
+        .notification.post {
+          border-left: 4px solid #27ae60;
+          background: linear-gradient(135deg, #eafaf1 0%, #f4fdf7 100%);
+        }
+
+        .notification.reaction {
+          border-left: 4px solid #e91e63;
+          background: linear-gradient(135deg, #fce4ec 0%, #fdf2f8 100%);
+        }
+
+        .notification.system {
+          border-left: 4px solid #9b59b6;
+          background: linear-gradient(135deg, #f3e5f5 0%, #faf5ff 100%);
+        }
+
+        .notification-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+
+        .notification-category {
+          background: #34495e;
+          color: white;
+          padding: 4px 12px;
+          border-radius: 15px;
+          font-size: 0.8em;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+
+        .notification-time {
+          color: #7f8c8d;
+          font-size: 0.9em;
+        }
+
+        .notification-message {
+          color: #2c3e50;
+          line-height: 1.4;
+          font-size: 1em;
+        }
+
+        .notification-user {
+          color: #8e44ad;
+          font-size: 0.85em;
+          margin-top: 8px;
+          font-style: italic;
+        }
+
+        .input-group {
+          display: flex;
+          gap: 15px;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+
+        input[type="text"], input[type="password"] {
+          flex: 1;
+          padding: 12px;
+          border: 2px solid #ddd;
+          border-radius: 8px;
+          font-size: 14px;
+          transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+          outline: none;
+          border-color: #3498db;
+          box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        button {
+          padding: 12px 24px;
+          border: none;
+          border-radius: 8px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 14px;
+        }
+
+        .btn-primary {
+          background: linear-gradient(45deg, #3498db, #2980b9);
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-success {
+          background: linear-gradient(45deg, #27ae60, #229954);
+          color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-danger {
+          background: linear-gradient(45deg, #e74c3c, #c0392b);
+          color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-warning {
+          background: linear-gradient(45deg, #f39c12, #e67e22);
+          color: white;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        button:disabled {
+          background: #bdc3c7;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+          margin-top: 20px;
+        }
+
+        .stat-card {
+          background: white;
+          border: 1px solid #ecf0f1;
+          border-radius: 10px;
+          padding: 20px;
+          text-align: center;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+          font-size: 2em;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+
+        .stat-number.total { color: #3498db; }
+        .stat-number.group { color: #27ae60; }
+        .stat-number.thread { color: #e67e22; }
+        .stat-number.post { color: #9b59b6; }
+        .stat-number.reaction { color: #e91e63; }
+
+        .stat-label {
+          color: #7f8c8d;
+          font-size: 0.9em;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .test-actions {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 15px;
+          margin-top: 20px;
+        }
+
+        .emoji {
+          font-size: 1.2em;
+          margin-right: 8px;
+        }
+
+        .alert {
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 15px;
+          font-weight: bold;
+        }
+
+        .alert-success {
+          background-color: #d4edda;
+          border: 1px solid #c3e6cb;
+          color: #155724;
+        }
+
+        .alert-error {
+          background-color: #f8d7da;
+          border: 1px solid #f5c6cb;
+          color: #721c24;
+        }
+
+        .alert-info {
+          background-color: #d1ecf1;
+          border: 1px solid #bee5eb;
+          color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔔 Sistema de Notificaciones Germogli</h1>
+
+    <!-- Sección de Autenticación -->
+    <div class="section auth-section">
+        <h2><span class="emoji">🔐</span>Autenticación</h2>
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Usuario (ej: admin)" value="admin">
+            <input type="password" id="password" placeholder="Contraseña" value="admin">
+            <button id="loginButton" class="btn-success">
+                <span class="emoji">🚀</span>Iniciar Sesión
+            </button>
+        </div>
+        <div id="authStatus"></div>
+    </div>
+
+    <!-- Sección de Conexión WebSocket -->
+    <div class="section connection-section">
+        <h2><span class="emoji">🔌</span>Conexión WebSocket</h2>
+        <div class="input-group">
+            <div>
+                <strong>Estado:</strong>
+                <span id="connectionStatus" class="status disconnected">Desconectado</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <button id="connectButton" class="btn-primary" disabled>
+                <span class="emoji">🔗</span>Conectar
+            </button>
+            <button id="disconnectButton" class="btn-danger" disabled>
+                <span class="emoji">❌</span>Desconectar
+            </button>
+            <button id="clearButton" class="btn-warning">
+                <span class="emoji">🗑️</span>Limpiar
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number total" id="totalNotifications">0</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number group" id="groupNotifications">0</div>
+            <div class="stat-label">Grupos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number thread" id="threadNotifications">0</div>
+            <div class="stat-label">Hilos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number post" id="postNotifications">0</div>
+            <div class="stat-label">Posts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number reaction" id="reactionNotifications">0</div>
+            <div class="stat-label">Reacciones</div>
+        </div>
+    </div>
+
+    <!-- Sección de Notificaciones -->
+    <div class="section notification-section">
+        <h2><span class="emoji">📬</span>Notificaciones en Tiempo Real</h2>
+        <div id="notificationDisplay" class="notification-display">
+            <div class="alert alert-info">
+                <span class="emoji">ℹ️</span>
+                Las notificaciones aparecerán aquí en tiempo real.
+                Usa Postman para probar creando grupos, hilos, posts, etc.
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones de Prueba -->
+    <div class="section">
+        <h2><span class="emoji">🧪</span>Guía de Pruebas</h2>
+        <div class="alert alert-info">
+            <strong>Cómo probar las notificaciones:</strong><br>
+            1. Conéctate con este cliente<br>
+            2. Usa Postman para hacer peticiones a:<br>
+            • <code>POST /groups</code> - Crear grupo<br>
+            • <code>POST /groups/{id}/join</code> - Unirse a grupo<br>
+            • <code>POST /threads</code> - Crear hilo<br>
+            • <code>POST /posts</code> - Crear publicación<br>
+            • <code>POST /reactions</code> - Crear reacción<br>
+            3. Las notificaciones aparecerán automáticamente aquí
+        </div>
+
+        <div class="test-actions">
+            <button onclick="showTestInfo('group')" class="btn-primary">
+                <span class="emoji">👥</span>Probar Grupos
+            </button>
+            <button onclick="showTestInfo('thread')" class="btn-primary">
+                <span class="emoji">📝</span>Probar Hilos
+            </button>
+            <button onclick="showTestInfo('post')" class="btn-primary">
+                <span class="emoji">📋</span>Probar Posts
+            </button>
+            <button onclick="showTestInfo('reaction')" class="btn-primary">
+                <span class="emoji">❤️</span>Probar Reacciones
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Referencias DOM
+    const elements = {
+      username: document.getElementById('username'),
+      password: document.getElementById('password'),
+      loginButton: document.getElementById('loginButton'),
+      authStatus: document.getElementById('authStatus'),
+      connectionStatus: document.getElementById('connectionStatus'),
+      connectButton: document.getElementById('connectButton'),
+      disconnectButton: document.getElementById('disconnectButton'),
+      clearButton: document.getElementById('clearButton'),
+      notificationDisplay: document.getElementById('notificationDisplay'),
+      totalNotifications: document.getElementById('totalNotifications'),
+      groupNotifications: document.getElementById('groupNotifications'),
+      threadNotifications: document.getElementById('threadNotifications'),
+      postNotifications: document.getElementById('postNotifications'),
+      reactionNotifications: document.getElementById('reactionNotifications')
+    };
+
+    // Variables de estado
+    let stompClient = null;
+    let isAuthenticated = false;
+    let currentUser = null;
+    let notificationStats = {
+      total: 0,
+      group: 0,
+      thread: 0,
+      post: 0,
+      reaction: 0
+    };
+
+    // Configuración
+    const API_BASE = ''; // Mismo origen(vacio)
+    const WS_ENDPOINT = '/ws';
+
+    // Event Listeners
+    elements.loginButton.addEventListener('click', login);
+    elements.connectButton.addEventListener('click', connectWebSocket);
+    elements.disconnectButton.addEventListener('click', disconnect);
+    elements.clearButton.addEventListener('click', clearNotifications);
+
+    // Función de login
+    async function login() {
+      const username = elements.username.value.trim();
+      const password = elements.password.value.trim();
+
+      if (!username || !password) {
+        showAlert('Por favor ingresa usuario y contraseña', 'error');
+        return;
+      }
+
+      try {
+        elements.loginButton.disabled = true;
+        elements.loginButton.innerHTML = '<span class="emoji">⏳</span>Autenticando...';
+
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include', // IMPORTANTE: Para incluir cookies
+          body: JSON.stringify({ username, password })
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          currentUser = userData;
+          isAuthenticated = true;
+
+          showAlert(`✅ Autenticado como: ${userData.username} (${userData.role})`, 'success');
+          elements.connectButton.disabled = false;
+          elements.loginButton.innerHTML = '<span class="emoji">✅</span>Autenticado';
+
+          // Deshabilitar campos de login
+          elements.username.disabled = true;
+          elements.password.disabled = true;
+
+        } else {
+          const error = await response.text();
+          showAlert(`❌ Error de autenticación: ${error}`, 'error');
+        }
+      } catch (error) {
+        showAlert(`❌ Error de conexión: ${error.message}`, 'error');
+      } finally {
+        if (!isAuthenticated) {
+          elements.loginButton.disabled = false;
+          elements.loginButton.innerHTML = '<span class="emoji">🚀</span>Iniciar Sesión';
+        }
+      }
+    }
+
+    // Conectar WebSocket
+    function connectWebSocket() {
+      if (!isAuthenticated) {
+        showAlert('❌ Debes autenticarte primero', 'error');
+        return;
+      }
+
+      try {
+        updateConnectionStatus('connecting', 'Conectando...');
+        elements.connectButton.disabled = true;
+
+        addNotification('🔌 Iniciando conexión WebSocket...', 'system', null);
+
+        // Crear conexión SockJS
+        const socket = new SockJS(WS_ENDPOINT);
+        stompClient = Stomp.over(socket);
+
+        // Configuración
+        stompClient.reconnect_delay = 5000;
+        stompClient.heartbeat.outgoing = 10000;
+        stompClient.heartbeat.incoming = 10000;
+        stompClient.debug = null; // Desactivar logs
+
+        // Conectar (autenticación por cookie)
+        stompClient.connect({}, onConnected, onError);
+
+      } catch (error) {
+        showAlert(`❌ Error al conectar: ${error.message}`, 'error');
+        elements.connectButton.disabled = false;
+      }
+    }
+
+    // Callback de conexión exitosa
+    function onConnected() {
+      updateConnectionStatus('connected', 'Conectado');
+      elements.disconnectButton.disabled = false;
+
+      addNotification('✅ Conectado al sistema de notificaciones', 'system', null);
+      showAlert('✅ Conectado al WebSocket de notificaciones', 'success');
+
+      // Suscribirse al topic de notificaciones
+      subscribeToNotifications();
+    }
+
+    // Callback de error
+    function onError(error) {
+      updateConnectionStatus('disconnected', 'Error');
+      elements.connectButton.disabled = false;
+      elements.disconnectButton.disabled = true;
+
+      addNotification(`❌ Error de conexión: ${error}`, 'system', null);
+      showAlert(`❌ Error de WebSocket: ${error}`, 'error');
+    }
+
+    // Suscribirse a notificaciones
+    function subscribeToNotifications() {
+      // Suscribirse al topic principal de notificaciones
+      stompClient.subscribe('/topic/notifications', function(payload) {
+        try {
+          const notification = JSON.parse(payload.body);
+          displayNotification(notification);
+        } catch (error) {
+          console.error('Error procesando notificación:', error);
+          addNotification(`⚠️ Error procesando notificación: ${error.message}`, 'system', null);
+        }
+      });
+
+      addNotification('📡 Suscrito al canal de notificaciones', 'system', null);
+    }
+
+    // Mostrar notificación recibida
+    function displayNotification(notification) {
+      // Determinar categoría si no viene especificada
+      const category = notification.category || 'system';
+
+      // Agregar a la UI
+      addNotification(
+        notification.message,
+        category,
+        notification.userId
+      );
+
+      // Actualizar estadísticas
+      updateStats(category);
+
+      // Efecto visual (opcional)
+      document.title = '🔔 Nueva Notificación - Germogli';
+      setTimeout(() => {
+        document.title = 'Cliente de Notificaciones - Germogli';
+      }, 3000);
+    }
+
+    // Agregar notificación a la UI
+    function addNotification(message, category, userId) {
+      const notificationElement = document.createElement('div');
+      notificationElement.className = `notification ${category}`;
+
+      // Header con categoría y tiempo
+      const headerElement = document.createElement('div');
+      headerElement.className = 'notification-header';
+
+      const categoryElement = document.createElement('span');
+      categoryElement.className = 'notification-category';
+      categoryElement.textContent = category.toUpperCase();
+
+      const timeElement = document.createElement('span');
+      timeElement.className = 'notification-time';
+      timeElement.textContent = new Date().toLocaleTimeString();
+
+      headerElement.appendChild(categoryElement);
+      headerElement.appendChild(timeElement);
+
+      // Mensaje principal
+      const messageElement = document.createElement('div');
+      messageElement.className = 'notification-message';
+      messageElement.textContent = message;
+
+      // Usuario (si aplica)
+      if (userId) {
+        const userElement = document.createElement('div');
+        userElement.className = 'notification-user';
+        userElement.textContent = `Usuario ID: ${userId}`;
+        notificationElement.appendChild(userElement);
+      }
+
+      notificationElement.appendChild(headerElement);
+      notificationElement.appendChild(messageElement);
+
+      // Insertar al inicio (más recientes primero)
+      const firstChild = elements.notificationDisplay.firstChild;
+      if (firstChild) {
+        elements.notificationDisplay.insertBefore(notificationElement, firstChild);
+      } else {
+        elements.notificationDisplay.appendChild(notificationElement);
+      }
+
+      // Animar entrada
+      notificationElement.style.opacity = '0';
+      notificationElement.style.transform = 'translateY(-20px)';
+      setTimeout(() => {
+        notificationElement.style.opacity = '1';
+        notificationElement.style.transform = 'translateY(0)';
+        notificationElement.style.transition = 'all 0.3s ease';
+      }, 10);
+    }
+
+    // Actualizar estadísticas
+    function updateStats(category) {
+      notificationStats.total++;
+      if (notificationStats[category] !== undefined) {
+        notificationStats[category]++;
+      }
+
+      elements.totalNotifications.textContent = notificationStats.total;
+      elements.groupNotifications.textContent = notificationStats.group;
+      elements.threadNotifications.textContent = notificationStats.thread;
+      elements.postNotifications.textContent = notificationStats.post;
+      elements.reactionNotifications.textContent = notificationStats.reaction;
+    }
+
+    // Desconectar
+    function disconnect() {
+      if (stompClient && stompClient.connected) {
+        stompClient.disconnect(() => {
+          updateConnectionStatus('disconnected', 'Desconectado');
+          elements.connectButton.disabled = false;
+          elements.disconnectButton.disabled = true;
+
+          addNotification('🔌 Desconectado del sistema', 'system', null);
+        });
+      }
+    }
+
+    // Limpiar notificaciones
+    function clearNotifications() {
+      elements.notificationDisplay.innerHTML = `
+        <div class="alert alert-info">
+          <span class="emoji">ℹ️</span>
+          Las notificaciones aparecerán aquí en tiempo real.
+          Usa Postman para probar creando grupos, hilos, posts, etc.
+        </div>
+      `;
+
+      // Resetear estadísticas
+      notificationStats = { total: 0, group: 0, thread: 0, post: 0, reaction: 0 };
+      elements.totalNotifications.textContent = '0';
+      elements.groupNotifications.textContent = '0';
+      elements.threadNotifications.textContent = '0';
+      elements.postNotifications.textContent = '0';
+      elements.reactionNotifications.textContent = '0';
+    }
+
+    // Actualizar estado de conexión
+    function updateConnectionStatus(status, text) {
+      elements.connectionStatus.textContent = text;
+      elements.connectionStatus.className = `status ${status}`;
+    }
+
+    // Mostrar alerta
+    function showAlert(message, type) {
+      elements.authStatus.innerHTML = `
+        <div class="alert alert-${type}">
+          ${message}
+        </div>
+      `;
+
+      // Auto-ocultar después de 5 segundos
+      setTimeout(() => {
+        if (elements.authStatus.innerHTML.includes(message)) {
+          elements.authStatus.innerHTML = '';
+        }
+      }, 5000);
+    }
+
+    // Mostrar información de pruebas
+    function showTestInfo(type) {
+      const examples = {
+        group: {
+          title: 'Probar Notificaciones de Grupos',
+          endpoints: [
+            'POST /groups - Crear grupo',
+            'POST /groups/{id}/join - Unirse a grupo',
+            'PUT /groups/{id} - Actualizar grupo',
+            'DELETE /groups/{id} - Eliminar grupo',
+            'POST /groups/{id}/leave - Abandonar grupo'
+          ]
+        },
+        thread: {
+          title: 'Probar Notificaciones de Hilos',
+          endpoints: [
+            'POST /threads - Crear hilo',
+            'PUT /threads/{id} - Actualizar hilo',
+            'DELETE /threads/{id} - Eliminar hilo'
+          ]
+        },
+        post: {
+          title: 'Probar Notificaciones de Posts',
+          endpoints: [
+            'POST /posts - Crear publicación',
+            'PUT /posts/{id} - Actualizar publicación',
+            'DELETE /posts/{id} - Eliminar publicación'
+          ]
+        },
+        reaction: {
+          title: 'Probar Notificaciones de Reacciones',
+          endpoints: [
+            'POST /reactions - Crear reacción'
+          ]
+        }
+      };
+
+      const info = examples[type];
+      const message = `${info.title}:\n\n${info.endpoints.join('\n')}`;
+      alert(message);
+    }
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', function() {
+      // Limpiar notificaciones al cargar
+      clearNotifications();
+    });
+</script>
+</body>
+</html>

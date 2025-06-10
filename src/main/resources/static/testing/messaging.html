@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cliente de Prueba - Sistema de Mensajería Germogli</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #f5f5f5;
+        }
+        .container {
+          display: grid;
+          grid-template-columns: 1fr 2fr;
+          gap: 20px;
+        }
+        .card {
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 15px;
+          background: white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #2c3e50;
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        h2 {
+          margin-top: 0;
+          color: #34495e;
+          border-bottom: 2px solid #3498db;
+          padding-bottom: 10px;
+        }
+        #connectionStatus {
+          padding: 10px;
+          border-radius: 6px;
+          font-weight: bold;
+          display: inline-block;
+          min-width: 120px;
+          text-align: center;
+        }
+        .connected {
+          background-color: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+          background-color: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+        }
+        .connecting {
+          background-color: #fff3cd;
+          color: #856404;
+          border: 1px solid #ffeaa7;
+        }
+        #messageOutput {
+          border: 1px solid #ddd;
+          padding: 15px;
+          height: 450px;
+          overflow-y: scroll;
+          background: #fafafa;
+          margin-bottom: 15px;
+          border-radius: 6px;
+        }
+        .message {
+          margin-bottom: 15px;
+          padding: 12px;
+          border-radius: 8px;
+          max-width: 85%;
+        }
+        .message.received {
+          background-color: #e3f2fd;
+          border-left: 4px solid #2196f3;
+        }
+        .message.sent {
+          background-color: #e8f5e8;
+          border-left: 4px solid #4caf50;
+          margin-left: auto;
+        }
+        .message.system {
+          background-color: #fff3e0;
+          border-left: 4px solid #ff9800;
+          text-align: center;
+          margin: 0 auto;
+          font-style: italic;
+        }
+        .username {
+          font-weight: bold;
+          margin-bottom: 6px;
+          color: #2c3e50;
+        }
+        .timestamp {
+          font-size: 0.8em;
+          color: #7f8c8d;
+          margin-top: 6px;
+        }
+        .error {
+          color: #e74c3c;
+          font-weight: bold;
+          padding: 12px;
+          background-color: #fadbd8;
+          border: 1px solid #f1948a;
+          border-radius: 6px;
+          margin-bottom: 15px;
+        }
+        .success {
+          color: #27ae60;
+          font-weight: bold;
+          padding: 12px;
+          background-color: #d5f4e6;
+          border: 1px solid #82e0aa;
+          border-radius: 6px;
+          margin-bottom: 15px;
+        }
+        .log {
+          color: #5d6d7e;
+          margin-bottom: 10px;
+          padding: 8px;
+          background-color: #f8f9fa;
+          border-radius: 4px;
+          border-left: 3px solid #6c757d;
+        }
+        input, select, button, textarea {
+          margin-bottom: 12px;
+          padding: 10px;
+          width: 100%;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          font-size: 14px;
+        }
+        button {
+          background-color: #3498db;
+          color: white;
+          border: none;
+          cursor: pointer;
+          font-weight: bold;
+          transition: background-color 0.3s;
+        }
+        button:hover:not(:disabled) {
+          background-color: #2980b9;
+        }
+        button:disabled {
+          background-color: #bdc3c7;
+          cursor: not-allowed;
+        }
+        .btn-danger {
+          background-color: #e74c3c;
+        }
+        .btn-danger:hover:not(:disabled) {
+          background-color: #c0392b;
+        }
+        .btn-success {
+          background-color: #27ae60;
+        }
+        .btn-success:hover:not(:disabled) {
+          background-color: #229954;
+        }
+        #messageInput {
+          margin-bottom: 0;
+        }
+        .input-group {
+          display: flex;
+          gap: 10px;
+        }
+        .input-group input {
+          flex: 1;
+          margin-bottom: 0;
+        }
+        .input-group button {
+          width: auto;
+          min-width: 80px;
+          margin-bottom: 0;
+        }
+        .auth-section {
+          background-color: #f8f9fa;
+          padding: 15px;
+          border-radius: 6px;
+          margin-bottom: 15px;
+        }
+        .stats {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 15px;
+        }
+        .stat-item {
+          background: #ecf0f1;
+          padding: 10px;
+          border-radius: 4px;
+          text-align: center;
+        }
+        .stat-number {
+          font-size: 1.5em;
+          font-weight: bold;
+          color: #2c3e50;
+        }
+        .stat-label {
+          font-size: 0.9em;
+          color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+<h1>🚀 Sistema de Mensajería Germogli - Cliente de Prueba</h1>
+
+<div class="card">
+    <h2>🔐 Autenticación & Conexión</h2>
+    <div class="auth-section">
+        <label for="credentials">Credenciales de Login:</label>
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Usuario (ej: admin)" value="admin">
+            <input type="password" id="password" placeholder="Contraseña" value="admin">
+            <button id="loginButton" class="btn-success">Login</button>
+        </div>
+    </div>
+
+    <div>
+        <strong>Estado:</strong> <span id="connectionStatus" class="disconnected">Desconectado</span>
+    </div>
+    <div class="input-group">
+        <button id="connectButton" disabled>Conectar WebSocket</button>
+        <button id="disconnectButton" class="btn-danger" disabled>Desconectar</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-number" id="messageCount">0</div>
+            <div class="stat-label">Mensajes</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="connectionTime">00:00</div>
+            <div class="stat-label">Tiempo Conectado</div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h2>⚙️ Configuración de Chat</h2>
+
+        <label for="contextType">Contexto de Mensajería:</label>
+        <select id="contextType">
+            <option value="group">💬 Grupo</option>
+            <option value="thread">📝 Hilo</option>
+            <option value="post">📋 Publicación</option>
+            <option value="forum">🌐 Foro General</option>
+        </select>
+
+        <div id="contextIdContainer">
+            <label for="contextId">ID del Contexto:</label>
+            <input type="number" id="contextId" placeholder="Ej: 1" value="1" min="1">
+        </div>
+
+        <h3>📚 Historial</h3>
+        <label for="messageLimit">Límite de Mensajes:</label>
+        <input type="number" id="messageLimit" value="50" min="1" max="200">
+
+        <button id="loadHistoryButton" disabled>📖 Cargar Historial</button>
+        <button id="clearChatButton" class="btn-danger">🗑️ Limpiar Chat</button>
+    </div>
+
+    <div class="card">
+        <h2>💬 Chat en Tiempo Real</h2>
+        <div id="messageOutput"></div>
+
+        <div class="input-group">
+            <textarea id="messageInput" placeholder="Escribe tu mensaje aquí..." disabled rows="3"></textarea>
+            <button id="sendButton" disabled>📤 Enviar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Referencias DOM
+    const elements = {
+      username: document.getElementById('username'),
+      password: document.getElementById('password'),
+      loginButton: document.getElementById('loginButton'),
+      connectionStatus: document.getElementById('connectionStatus'),
+      connectButton: document.getElementById('connectButton'),
+      disconnectButton: document.getElementById('disconnectButton'),
+      contextType: document.getElementById('contextType'),
+      contextIdContainer: document.getElementById('contextIdContainer'),
+      contextId: document.getElementById('contextId'),
+      messageLimit: document.getElementById('messageLimit'),
+      loadHistoryButton: document.getElementById('loadHistoryButton'),
+      clearChatButton: document.getElementById('clearChatButton'),
+      messageOutput: document.getElementById('messageOutput'),
+      messageInput: document.getElementById('messageInput'),
+      sendButton: document.getElementById('sendButton'),
+      messageCount: document.getElementById('messageCount'),
+      connectionTime: document.getElementById('connectionTime')
+    };
+
+    // Variables de estado
+    let stompClient = null;
+    let subscription = null;
+    let isAuthenticated = false;
+    let messageCounter = 0;
+    let connectionStartTime = null;
+    let connectionTimer = null;
+    let currentUser = null;
+
+    // Configuración
+    const API_BASE = '';// URL base de la API
+    const WS_ENDPOINT = '/ws';
+
+    // Event Listeners
+    elements.loginButton.addEventListener('click', login);
+    elements.connectButton.addEventListener('click', connectWebSocket);
+    elements.disconnectButton.addEventListener('click', disconnect);
+    elements.loadHistoryButton.addEventListener('click', loadMessageHistory);
+    elements.clearChatButton.addEventListener('click', clearChat);
+    elements.sendButton.addEventListener('click', sendMessage);
+    elements.contextType.addEventListener('change', onContextChange);
+    elements.contextId.addEventListener('change', onContextChange);
+
+    // Enter para enviar mensaje
+    elements.messageInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Mostrar/ocultar campo contextId
+    function onContextChange() {
+      const isForm = elements.contextType.value !== 'forum';
+      elements.contextIdContainer.style.display = isForm ? 'block' : 'none';
+
+      if (stompClient && stompClient.connected) {
+        subscribeToTopic();
+      }
+    }
+
+    // Función de login con autenticación por cookies
+    async function login() {
+      const username = elements.username.value.trim();
+      const password = elements.password.value.trim();
+
+      if (!username || !password) {
+        showError('Por favor ingresa usuario y contraseña');
+        return;
+      }
+
+      try {
+        elements.loginButton.disabled = true;
+        elements.loginButton.textContent = 'Autenticando...';
+
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include', // IMPORTANTE: Para incluir cookies
+          body: JSON.stringify({
+            username: username,
+            password: password
+          })
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          currentUser = userData;
+          isAuthenticated = true;
+
+          showSuccess(`✅ Autenticado como: ${userData.username} (${userData.role})`);
+          elements.connectButton.disabled = false;
+          elements.loginButton.textContent = '✓ Autenticado';
+          elements.loginButton.disabled = true;
+
+          // Deshabilitar campos de login
+          elements.username.disabled = true;
+          elements.password.disabled = true;
+
+        } else {
+          const error = await response.text();
+          showError(`Error de autenticación: ${error}`);
+        }
+      } catch (error) {
+        showError(`Error de conexión: ${error.message}`);
+      } finally {
+        if (!isAuthenticated) {
+          elements.loginButton.disabled = false;
+          elements.loginButton.textContent = 'Login';
+        }
+      }
+    }
+
+    // Conectar al WebSocket (ya autenticado por cookie)
+    function connectWebSocket() {
+      if (!isAuthenticated) {
+        showError('Debes autenticarte primero');
+        return;
+      }
+
+      try {
+        updateConnectionStatus('connecting', 'Conectando...');
+        elements.connectButton.disabled = true;
+
+        log('🔌 Conectando al WebSocket...');
+
+        // Crear conexión SockJS
+        const socket = new SockJS(WS_ENDPOINT);
+        stompClient = Stomp.over(socket);
+
+        // Configuración
+        stompClient.reconnect_delay = 5000;
+        stompClient.heartbeat.outgoing = 10000;
+        stompClient.heartbeat.incoming = 10000;
+        stompClient.debug = null; // Desactivar logs STOMP
+
+        // Conectar (sin headers adicionales, la autenticación viene por cookie)
+        stompClient.connect({}, onConnected, onError);
+
+      } catch (error) {
+        showError(`Error al conectar: ${error.message}`);
+        elements.connectButton.disabled = false;
+      }
+    }
+
+    // Callback de conexión exitosa
+    function onConnected() {
+      updateConnectionStatus('connected', 'Conectado');
+      elements.disconnectButton.disabled = false;
+      elements.loadHistoryButton.disabled = false;
+      elements.messageInput.disabled = false;
+      elements.sendButton.disabled = false;
+
+      connectionStartTime = Date.now();
+      startConnectionTimer();
+
+      showSuccess('✅ Conectado al WebSocket');
+
+      // Suscribirse al topic correspondiente
+      subscribeToTopic();
+
+      // Suscribirse a errores
+      subscribeToErrors();
+
+      // Cargar historial inicial
+      loadMessageHistory();
+    }
+
+    // Callback de error
+    function onError(error) {
+      updateConnectionStatus('disconnected', 'Error de conexión');
+      elements.connectButton.disabled = false;
+      elements.disconnectButton.disabled = true;
+
+      showError(`❌ Error de WebSocket: ${error}`);
+      stopConnectionTimer();
+    }
+
+    // Suscribirse al topic según contexto
+    function subscribeToTopic() {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+
+      const type = elements.contextType.value;
+      const id = type === 'forum' ? null : elements.contextId.value;
+
+      let topicPath;
+      switch (type) {
+        case 'group':
+          topicPath = `/topic/message/group/${id}`;
+          break;
+        case 'thread':
+          topicPath = `/topic/message/thread/${id}`;
+          break;
+        case 'post':
+          topicPath = `/topic/message/post/${id}`;
+          break;
+        case 'forum':
+          topicPath = '/topic/message/forum';
+          break;
+      }
+
+      log(`📡 Suscribiéndose a: ${topicPath}`);
+
+      subscription = stompClient.subscribe(topicPath, onMessageReceived);
+    }
+
+    // Suscribirse a canales de error
+    function subscribeToErrors() {
+      stompClient.subscribe('/user/queue/errors', function(payload) {
+        try {
+          const error = JSON.parse(payload.body);
+          showError(`⚠️ Error del servidor: ${error.message}`);
+        } catch (e) {
+          showError(`⚠️ Error: ${payload.body}`);
+        }
+      });
+    }
+
+    // Recibir mensaje
+    function onMessageReceived(payload) {
+      try {
+        const message = JSON.parse(payload.body);
+        displayMessage(message, 'received');
+        messageCounter++;
+        elements.messageCount.textContent = messageCounter;
+      } catch (error) {
+        console.error('Error procesando mensaje:', error);
+      }
+    }
+
+    // Enviar mensaje
+    function sendMessage() {
+      const content = elements.messageInput.value.trim();
+      if (!content || !stompClient || !stompClient.connected) return;
+
+      const type = elements.contextType.value;
+      const id = type === 'forum' ? null : parseInt(elements.contextId.value);
+
+      let destination;
+      switch (type) {
+        case 'group':
+          destination = `/app/message/group/${id}`;
+          break;
+        case 'thread':
+          destination = `/app/message/thread/${id}`;
+          break;
+        case 'post':
+          destination = `/app/message/post/${id}`;
+          break;
+        case 'forum':
+          destination = '/app/message/forum';
+          break;
+      }
+
+      const message = {
+        content: content,
+        postId: type === 'post' ? id : null,
+        threadId: type === 'thread' ? id : null,
+        groupId: type === 'group' ? id : null,
+        messageType: 'CHAT'
+      };
+
+      try {
+        stompClient.send(destination, {}, JSON.stringify(message));
+
+        // Mostrar mensaje enviado
+        displayMessage({
+          content: content,
+          username: currentUser?.username || 'Tú',
+          timestamp: new Date().toISOString()
+        }, 'sent');
+
+        elements.messageInput.value = '';
+        messageCounter++;
+        elements.messageCount.textContent = messageCounter;
+
+      } catch (error) {
+        showError(`Error enviando mensaje: ${error.message}`);
+      }
+    }
+
+    // Cargar historial
+    async function loadMessageHistory() {
+      const type = elements.contextType.value;
+      const id = type === 'forum' ? '' : elements.contextId.value;
+      const limit = elements.messageLimit.value;
+
+      try {
+        const url = `${API_BASE}/messages/history?contextType=${type}&limit=${limit}${id ? `&contextId=${id}` : ''}`;
+
+        const response = await fetch(url, {
+          credentials: 'include' // Incluir cookies
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.data && data.data.length > 0) {
+            // Limpiar chat actual
+            elements.messageOutput.innerHTML = '';
+            messageCounter = 0;
+
+            // Ordenar mensajes por fecha
+            data.data.sort((a, b) => new Date(a.creationDate) - new Date(b.creationDate));
+
+            // Mostrar mensajes históricos
+            data.data.forEach(message => {
+              displayMessage({
+                content: message.content,
+                userId: message.userId,
+                username: `Usuario ${message.userId}`,
+                timestamp: message.creationDate
+              }, 'received');
+              messageCounter++;
+            });
+
+            elements.messageCount.textContent = messageCounter;
+            showSuccess(`📚 Cargados ${data.data.length} mensajes del historial`);
+          } else {
+            log('📭 No hay mensajes en el historial');
+          }
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        showError(`Error cargando historial: ${error.message}`);
+      }
+    }
+
+    // Mostrar mensaje en UI
+    function displayMessage(message, type) {
+      const messageElement = document.createElement('div');
+      messageElement.className = `message ${type}`;
+
+      const usernameElement = document.createElement('div');
+      usernameElement.className = 'username';
+      usernameElement.textContent = message.username || `Usuario ${message.userId || 'desconocido'}`;
+
+      const contentElement = document.createElement('div');
+      contentElement.textContent = message.content;
+
+      const timestampElement = document.createElement('div');
+      timestampElement.className = 'timestamp';
+      timestampElement.textContent = message.timestamp ?
+        new Date(message.timestamp).toLocaleString() :
+        new Date().toLocaleString();
+
+      messageElement.appendChild(usernameElement);
+      messageElement.appendChild(contentElement);
+      messageElement.appendChild(timestampElement);
+
+      elements.messageOutput.appendChild(messageElement);
+      elements.messageOutput.scrollTop = elements.messageOutput.scrollHeight;
+    }
+
+    // Desconectar
+    function disconnect() {
+      if (stompClient && stompClient.connected) {
+        if (subscription) {
+          subscription.unsubscribe();
+          subscription = null;
+        }
+
+        stompClient.disconnect(() => {
+          updateConnectionStatus('disconnected', 'Desconectado');
+          elements.connectButton.disabled = false;
+          elements.disconnectButton.disabled = true;
+          elements.loadHistoryButton.disabled = true;
+          elements.messageInput.disabled = true;
+          elements.sendButton.disabled = true;
+
+          stopConnectionTimer();
+          log('🔌 Desconectado del WebSocket');
+        });
+      }
+    }
+
+    // Limpiar chat
+    function clearChat() {
+      elements.messageOutput.innerHTML = '';
+      messageCounter = 0;
+      elements.messageCount.textContent = messageCounter;
+      log('🗑️ Chat limpiado');
+    }
+
+    // Actualizar estado de conexión
+    function updateConnectionStatus(status, text) {
+      elements.connectionStatus.textContent = text;
+      elements.connectionStatus.className = status;
+    }
+
+    // Timer de conexión
+    function startConnectionTimer() {
+      connectionTimer = setInterval(() => {
+        if (connectionStartTime) {
+          const elapsed = Math.floor((Date.now() - connectionStartTime) / 1000);
+          const minutes = Math.floor(elapsed / 60);
+          const seconds = elapsed % 60;
+          elements.connectionTime.textContent =
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+      }, 1000);
+    }
+
+    function stopConnectionTimer() {
+      if (connectionTimer) {
+        clearInterval(connectionTimer);
+        connectionTimer = null;
+      }
+      elements.connectionTime.textContent = '00:00';
+    }
+
+    // Funciones de UI
+    function showError(message) {
+      const errorElement = document.createElement('div');
+      errorElement.className = 'error';
+      errorElement.textContent = message;
+      elements.messageOutput.appendChild(errorElement);
+      elements.messageOutput.scrollTop = elements.messageOutput.scrollHeight;
+    }
+
+    function showSuccess(message) {
+      const successElement = document.createElement('div');
+      successElement.className = 'success';
+      successElement.textContent = message;
+      elements.messageOutput.appendChild(successElement);
+      elements.messageOutput.scrollTop = elements.messageOutput.scrollHeight;
+    }
+
+    function log(message) {
+      const logElement = document.createElement('div');
+      logElement.className = 'log';
+      logElement.textContent = `📋 ${message}`;
+      elements.messageOutput.appendChild(logElement);
+      elements.messageOutput.scrollTop = elements.messageOutput.scrollHeight;
+    }
+
+    // Inicialización
+    onContextChange(); // Configurar visibilidad inicial
+</script>
+</body>
+</html>
