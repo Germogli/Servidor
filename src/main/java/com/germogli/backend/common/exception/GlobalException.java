@@ -68,6 +68,9 @@ public class GlobalException {
     // Captura general para cualquier otra excepción
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneralException(Exception ex) {
+        // LOG TEMPORAL PARA DEBUG
+        System.err.println("🚨 ERROR CAPTURADO: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
+        ex.printStackTrace();
         // Se recomienda registrar el error completo para fines de depuración.
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Ocurrió un error inesperado. Por favor, intente de nuevo.");

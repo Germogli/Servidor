@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Aplicacion Backend Spring Boot
+  backend:
+    image: backend-app:latest
+    container_name: germogli-backend
+    restart: always
+    environment:
+      # Configuracion de base de datos Azure MySQL
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      
+      # Configuracion de Azure Storage
+      AZURE_CONNECTION_STRING: ${AZURE_CONNECTION_STRING}
+      
+      # Configuracion JWT
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_NAME: ${COOKIE_NAME}
+      
+      # Configuracion adicional
+      SPRING_PROFILES_ACTIVE: production
+    ports:
+      - "8080:8080"
+    networks:
+      - germogli-network
+
+  # Adminer - Interfaz web para gestionar la base de datos (opcional)
+  adminer:
+    image: adminer
+    container_name: germogli-adminer
+    restart: always
+    ports:
+      - "8081:8080"
+    networks:
+      - germogli-network
+
+networks:
+  germogli-network:
+    driver: bridge
+
