@@ -37,3 +37,14 @@ build/
 .env.local
 .env.production
 .env.staging
+
+### Azure deployment files with secrets ###
+container-group-complete.yaml
+container-group-https.yaml
+*.local.yaml
+
+### SSL certificates ###
+ssl/
+*.p12
+*.jks
+*.keystore

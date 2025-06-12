@@ -25,10 +25,10 @@ public class JwtCookieManager {
         // Crear cookie usando ResponseCookie builder (compatible con atributos modernos)
         ResponseCookie cookie = ResponseCookie.from(JwtService.JWT_COOKIE_NAME, token)
                 .httpOnly(true)               // Previene acceso JavaScript (protección XSS)
-                .secure(false)                 //// HTTP local permitido
+                .secure(true)                 //// HTTP local permitido
                 .path("/")                    // Disponible en toda la aplicación
                 .maxAge(JwtService.JWT_COOKIE_EXPIRY_SECONDS)  // Duración de la cookie
-                .sameSite("Lax")           //Menos restrictivo que Strict
+                .sameSite("None")           //Menos restrictivo que Strict
                 .build();
 
         // Añadir cookie al header de la respuesta
