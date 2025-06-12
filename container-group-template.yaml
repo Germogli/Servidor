@@ -1,0 +1,55 @@
+# Azure Container Instance Template para Backend HTTPS
+# Archivo de plantilla - NO contiene secretos reales
+# Copia este archivo como container-group-complete.yaml y completa los valores
+
+apiVersion: 2019-12-01
+location: eastus
+name: germogli-backend-container
+properties:
+  containers:
+  - name: germogli-backend
+    properties:
+      image: germogliacr.azurecr.io/germogli-backend:https
+      resources:
+        requests:
+          cpu: 1.0
+          memoryInGb: 2.0
+      ports:
+      - port: 8080
+        protocol: TCP
+      - port: 8443
+        protocol: TCP
+      environmentVariables:
+      - name: DB_URL
+        value: "jdbc:mysql://germogli-mysql-server.mysql.database.azure.com:3306/germogli_db?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8"
+      - name: DB_USERNAME
+        value: "germogliadmin"
+      - name: DB_PASSWORD
+        secureValue: "TU_DB_PASSWORD_AQUI"
+      - name: AZURE_CONNECTION_STRING
+        secureValue: "TU_AZURE_CONNECTION_STRING_AQUI"
+      - name: JWT_SECRET
+        secureValue: "TU_JWT_SECRET_AQUI"
+      - name: COOKIE_NAME
+        value: "germogli_jwt"
+      - name: SPRING_PROFILES_ACTIVE
+        value: "production"
+      - name: ALLOWED_ORIGINS
+        value: "https://localhost:5173,http://localhost:5173"
+  imageRegistryCredentials:
+  - server: germogliacr.azurecr.io
+    username: germogliacr
+    password: "TU_REGISTRY_PASSWORD_AQUI"
+  ipAddress:
+    type: Public
+    ports:
+    - port: 8080
+      protocol: TCP
+    - port: 8443
+      protocol: TCP
+    dnsNameLabel: germogli-backend
+  osType: Linux
+  restartPolicy: Always
+tags: null
+type: Microsoft.ContainerInstance/containerGroups
+
