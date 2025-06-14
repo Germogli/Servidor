@@ -72,7 +72,7 @@ SERVER_ADDRESS=localhost
 
 Si tu MySQL tiene contraseña, también debes editar `src/main/resources/application-local.properties`:
 
-#### Para MySQL CON contraseña:
+#### Para MySQL CON contraseña (configuración actual):
 ```properties
 # Configuración de base de datos MySQL local (OBLIGATORIAS desde .env.local)
 spring.datasource.url=${DB_LOCAL_URL}
@@ -81,7 +81,7 @@ spring.datasource.password=${DB_LOCAL_PASSWORD}
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 ```
 
-#### Para MySQL SIN contraseña (configuración actual):
+#### Para MySQL SIN contraseña:
 ```properties
 # Configuración de base de datos MySQL local (OBLIGATORIAS desde .env.local)
 spring.datasource.url=${DB_LOCAL_URL}
@@ -225,7 +225,8 @@ logging.level.org.hibernate.SQL=DEBUG
 
 ### Reiniciar aplicación rápidamente
 - Usar `Ctrl+C` para parar
-- Ejecutar `.un-local.ps1` nuevamente
+- Ejecutar `.
+un-local.ps1` nuevamente
 - Spring Boot DevTools permite reinicio automático al cambiar código
 
 ### Probar la API
