@@ -1,6 +1,6 @@
-# Azure Container Instance Template para Backend HTTPS
+# Azure Container Instance Template para Backend con Application Gateway SSL
 # Archivo de plantilla - NO contiene secretos reales
-# Copia este archivo como container-group-complete.yaml y completa los valores
+# Copia este archivo como container-group-gateway.yaml y completa los valores
 
 apiVersion: 2019-12-01
 location: eastus
@@ -9,15 +9,13 @@ properties:
   containers:
   - name: germogli-backend
     properties:
-      image: germogliacr.azurecr.io/germogli-backend:https
+      image: germogliacr.azurecr.io/germogli-backend:gateway-ssl
       resources:
         requests:
           cpu: 1.0
           memoryInGb: 2.0
       ports:
       - port: 8080
-        protocol: TCP
-      - port: 8443
         protocol: TCP
       environmentVariables:
       - name: DB_URL
@@ -33,9 +31,9 @@ properties:
       - name: COOKIE_NAME
         value: "germogli_jwt"
       - name: SPRING_PROFILES_ACTIVE
-        value: "production"
+        value: "production-gateway"
       - name: ALLOWED_ORIGINS
-        value: "https://localhost:5173,http://localhost:5173"
+        value: "https://germogli-app.eastus.cloudapp.azure.com,http://germogli-app.eastus.cloudapp.azure.com,https://localhost:5173,http://localhost:5173"
   imageRegistryCredentials:
   - server: germogliacr.azurecr.io
     username: germogliacr
@@ -44,8 +42,6 @@ properties:
     type: Public
     ports:
     - port: 8080
-      protocol: TCP
-    - port: 8443
       protocol: TCP
     dnsNameLabel: germogli-backend
   osType: Linux

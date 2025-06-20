@@ -32,7 +32,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // ✅ ORÍGENES PERMITIDOS - Incluir Live Server y otros puertos comunes
+        // ✅ ORÍGENES PERMITIDOS - Incluir Live Server, Application Gateway y otros puertos comunes
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",   // React default
                 "http://localhost:5173",   // Vite dev server
@@ -40,7 +40,9 @@ public class SecurityConfig {
                 "http://127.0.0.1:5500",   // ✅ Live Server VS Code
                 "http://localhost:5500",   // ✅ Live Server alternativo
                 "http://127.0.0.1:8080",   // ✅ Por si hay redirecciones locales
-                "http://localhost:8080"    // ✅ Por si hay redirecciones locales
+                "http://localhost:8080",   // ✅ Por si hay redirecciones locales
+                "https://germogli-app.eastus.cloudapp.azure.com",  // ✅ Application Gateway SSL
+                "http://germogli-app.eastus.cloudapp.azure.com"    // ✅ Application Gateway HTTP
         ));
 
         // ✅ MÉTODOS HTTP PERMITIDOS

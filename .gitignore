@@ -41,7 +41,11 @@ build/
 ### Azure deployment files with secrets ###
 container-group-complete.yaml
 container-group-https.yaml
+container-group-gateway.yaml
+container-group-with-secrets.yaml
 *.local.yaml
+*-complete.yaml
+*-secrets.yaml
 
 ### SSL certificates ###
 ssl/
