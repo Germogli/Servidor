@@ -42,7 +42,8 @@ public class SecurityConfig {
                 "http://127.0.0.1:8080",   // ✅ Por si hay redirecciones locales
                 "http://localhost:8080",   // ✅ Por si hay redirecciones locales
                 "https://germogli-app.eastus.cloudapp.azure.com",  // ✅ Application Gateway SSL
-                "http://germogli-app.eastus.cloudapp.azure.com"    // ✅ Application Gateway HTTP
+                "http://germogli-app.eastus.cloudapp.azure.com",    // ✅ Application Gateway HTTP
+                "https://germogli.vercel.app" // ✅ Vercel Frontend
         ));
 
         // ✅ MÉTODOS HTTP PERMITIDOS
